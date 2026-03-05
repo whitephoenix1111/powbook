@@ -89,23 +89,26 @@ Dự án xây dựng một nền tảng quản lý nội dung số (E-book và A
 - `app/(auth)/login/page.tsx` — trang **Create an account**: carousel 4 slides + dot nav, social buttons (Google/Facebook/Apple), email/password form, toggle hiện mật khẩu, link → `/signin`
 - `app/(auth)/signin/page.tsx` — trang **Sign in**: cùng layout với login, form đăng nhập, link → `/login`
 
+- `lib/store/audioStore.ts` — Zustand store: play/pause/seek/speed/skipForward/skipBackward, formatTime helper
+- `lib/mockData.ts` — thêm `BookPage` interface, `audioUrl`, helper `getBookById()`
+- `components/player/AudioPlayer.tsx` — orange bar sát đáy, phát MP3 thật (LibriVox), speed toggle, rewind/forward 15s, progress bar click-to-seek
+- `components/viewer/PdfViewer.tsx` — 2 cột hình chữ nhật dựng đứng, border khung sách, số trang luôn ở đáy (`mt-auto`), 3 nút float ngoài khung (Bookmark/Translate/TextSize)
+- `app/(main)/reader/[id]/page.tsx` — route `/reader/9`, kết nối Sidebar + PdfViewer + AudioPlayer
+
 ### 🚧 Skeleton (tạo file rồi nhưng chưa implement)
 - `components/bento/BentoGrid.tsx` — chỉ là `<div className="grid">`
 - `components/bento/BentoCard.tsx` — chỉ là placeholder div
 - `components/layout/Navbar.tsx` — chỉ là `<nav>Navbar</nav>`
-- `components/player/AudioPlayer.tsx` — chỉ là placeholder div
-- `components/viewer/PdfViewer.tsx` — chưa xem
 - `app/(main)/page.tsx` — chỉ có `<h1>Dashboard</h1>`
 
 ### ❌ Chưa làm
 - `lib/firebase.ts` — chưa cấu hình
 - `lib/cloudinary.ts` — chưa cấu hình
-- `lib/store/audioStore.ts` — Zustand store chưa implement
 - `.env.local` — chưa tạo
 
 ---
 
-**Bước tiếp theo: Implement `BentoGrid`, `BentoCard`, `Navbar`, `AudioPlayer` + wire vào `app/(main)/page.tsx`**
+**Bước tiếp theo: Implement `BentoGrid`, `BentoCard`, `Navbar` + wire vào `app/(main)/page.tsx`**
 
 ---
 

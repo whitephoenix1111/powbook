@@ -13,6 +13,14 @@ export interface Book {
   publisher?: string;
   released?: string;
   description?: string;
+  audioUrl?: string;
+  pages?: BookPage[];
+}
+
+export interface BookPage {
+  pageNumber: number;
+  chapter?: string;
+  content: string;
 }
 
 export const POPULAR_BOOKS: Book[] = [
@@ -119,6 +127,28 @@ export const ACTIVE_BOOK: Book = {
   format: "Audiobook",
   publisher: "Audible Verse, Inc.",
   released: "Apr 24, 2022",
+  audioUrl: "https://archive.org/download/alice_wonderland_librivox/awic_01_carroll_64kb.mp3",
   description:
-    "Die-hard Harry Potter audiobook fans will list the ways in which Dale differs from Fry. We love both of their performances, but some fans are firmly Team Dale or Team Fry. There's so much to love about Dale's interpretation in the U.S. edition of the audiobooks. From his voicing of a whiny Draco to the wispy, heartless tones of Voldemort, he gives each character a life of their own.",
+    "Die-hard Harry Potter audiobook fans will list the ways in which Dale differs from Fry. We love both of their performances, but some fans are firmly Team Dale or Team Fry. There's so much to love about Dale's interpretation in the U.S. edition of the audiobooks.",
+  pages: [
+    {
+      pageNumber: 5,
+      chapter: "Chapter 01:\nThe Ordinary World of the Dursleys",
+      content:
+        "The Dursleys are a well-to-do, status-conscious family living in Surrey, England. Mr. Dursley notices strange things on his way to work — people in cloaks, owls flying in daylight, whispers about someone called You-Know-Who. He dismisses it all and says nothing to his wife. That night, Albus Dumbledore appears on their street.",
+    },
+    {
+      pageNumber: 6,
+      content:
+        "Dumbledore meets Professor McGonagall, who has been watching the Dursley house all day in the form of a cat. They discuss the fall of Voldemort and the fate of the infant Harry Potter. A giant named Hagrid arrives on a flying motorcycle carrying the baby. Dumbledore places Harry on the Dursleys' doorstep with an explanatory letter, and the three part ways.",
+    },
+  ],
 };
+
+// Lookup map: id → Book (gộp tất cả sách)
+export const ALL_BOOKS: Book[] = [...POPULAR_BOOKS, ...RECOMMENDED_AUDIOBOOKS];
+
+export function getBookById(id: string): Book | undefined {
+  if (ACTIVE_BOOK.id === id) return ACTIVE_BOOK;
+  return ALL_BOOKS.find((b) => b.id === id);
+}

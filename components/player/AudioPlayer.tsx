@@ -1,133 +1,168 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useRef } from "react";
 import Image from "next/image";
+import { useAudioStore, formatTime } from "@/lib/store/audioStore";
 import {
-  Play, Pause, SkipForward, RotateCcw, RotateCw,
-  List, Captions, Volume2, Maximize2,
+  Play,
+  Pause,
+  SkipForward,
+  RotateCcw,
+  RotateCw,
+  ListMusic,
 } from "lucide-react";
-import type { Book } from "@/lib/mockData";
 
-interface AudioPlayerProps {
-  book: Book;
-}
+export default function AudioPlayer() {
+  const {
+    currentBook,
+    audioUrl,
+    isPlaying,
+    currentTime,
+    duration,
+    playbackRate,
+    setAudioRef,
+    togglePlay,
+    skipForward,
+    skipBackward,
+    setCurrentTime,
+    setDuration,
+    setPlaybackRate,
+    seek,
+  } = useAudioStore();
 
-export default function AudioPlayer({ book }: AudioPlayerProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(38); // percentage
-  const [speed, setSpeed] = useState(2);
-  const trackRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
-  const speeds = [1, 1.25, 1.5, 2, 3];
+  // Đăng ký audioRef vào store
+  useEffect(() => {
+    setAudioRef(audioRef.current);
+    return () => setAudioRef(null);
+  }, [setAudioRef]);
 
-  function cycleSpeed() {
-    const idx = speeds.indexOf(speed);
-    setSpeed(speeds[(idx + 1) % speeds.length]);
-  }
+  // Sync playbackRate
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
 
-  function handleTrackClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (!trackRef.current) return;
-    const rect = trackRef.current.getBoundingClientRect();
-    const pct = ((e.clientX - rect.left) / rect.width) * 100;
-    setProgress(Math.max(0, Math.min(100, pct)));
-  }
+  if (!currentBook || !audioUrl) return null;
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  const RATES = [1, 1.25, 1.5, 2];
+  const nextRate = () => {
+    const idx = RATES.indexOf(playbackRate);
+    setPlaybackRate(RATES[(idx + 1) % RATES.length]);
+  };
 
   return (
-    <div className="flex items-center gap-4 px-4 h-[72px] bg-brand flex-shrink-0 border-t border-brand-hover">
+    <div className="w-full bg-[#F97316] text-white px-4 py-3 border-t-2 border-black">
+      {/* Hidden audio element */}
+      <audio
+        ref={audioRef}
+        src={audioUrl}
+        onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime ?? 0)}
+        onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
+        onEnded={() => useAudioStore.getState().pause()}
+      />
 
-      {/* Book info */}
-      <div className="flex items-center gap-3 w-[260px] flex-shrink-0">
-        <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border border-brand-hover">
-          <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="48px" />
+      <div className="flex items-center gap-4">
+        {/* Cover + Info */}
+        <div className="flex items-center gap-3 min-w-[220px]">
+          <div className="relative w-12 h-12 rounded border-2 border-black overflow-hidden flex-shrink-0">
+            <Image
+              src={currentBook.cover}
+              alt={currentBook.title}
+              fill
+              className="object-cover"
+            />
+          </div>
+          <div className="leading-tight">
+            <p className="font-bold text-sm line-clamp-1">{currentBook.title}</p>
+            <p className="text-xs opacity-80">
+              By:{" "}
+              <span className="underline cursor-pointer">{currentBook.author}</span>
+              {currentBook.narrator && (
+                <>
+                  {" "}| Narrator:{" "}
+                  <span className="underline cursor-pointer">
+                    {currentBook.narrator}
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="font-sans text-[12px] font-semibold text-white leading-tight truncate">
-            {book.title.length > 30 ? book.title.slice(0, 30) + "..." : book.title}
-          </p>
-          <p className="font-sans text-[11px] text-white/70 leading-tight mt-0.5">
-            By:{" "}
-            <span className="underline cursor-pointer">{book.author}</span>
-            {book.narrator && (
-              <> | Narrator: <span className="underline cursor-pointer">{book.narrator}</span></>
-            )}
-          </p>
-        </div>
-      </div>
 
-      {/* Center controls + progress */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-1.5">
         {/* Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 justify-center">
           {/* Speed */}
           <button
-            onClick={cycleSpeed}
-            className="font-sans text-[12px] font-bold text-white w-8 h-6 rounded flex items-center justify-center border border-white/30 hover:bg-white/10 transition-colors"
+            onClick={nextRate}
+            className="text-sm font-bold w-9 h-9 border-2 border-black rounded bg-white text-black hover:bg-yellow-100 transition"
           >
-            {speed}x
+            {playbackRate}x
           </button>
 
-          {/* -15s */}
-          <button className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-white/10 transition-colors text-white relative">
-            <RotateCcw size={18} strokeWidth={2} />
-            <span className="absolute text-[8px] font-bold font-sans" style={{ bottom: "6px" }}>15</span>
-          </button>
-
-          {/* Play/Pause */}
+          {/* Rewind 15s */}
           <button
-            onClick={() => setIsPlaying(!isPlaying)}
-            className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 transition-colors text-white border border-white/30"
+            onClick={() => skipBackward(15)}
+            className="relative w-9 h-9 flex items-center justify-center border-2 border-black rounded bg-white text-black hover:bg-yellow-100 transition"
           >
-            {isPlaying
-              ? <Pause size={18} fill="white" strokeWidth={0} />
-              : <Play size={18} fill="white" strokeWidth={0} className="ml-0.5" />
-            }
+            <RotateCcw size={16} />
+            <span className="absolute text-[8px] font-bold bottom-0.5">15</span>
           </button>
 
-          {/* +15s */}
-          <button className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-white/10 transition-colors text-white relative">
-            <RotateCw size={18} strokeWidth={2} />
-            <span className="absolute text-[8px] font-bold font-sans" style={{ bottom: "6px" }}>15</span>
+          {/* Play / Pause */}
+          <button
+            onClick={togglePlay}
+            className="w-11 h-11 flex items-center justify-center border-2 border-black rounded-full bg-white text-black hover:bg-yellow-100 transition"
+          >
+            {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+          </button>
+
+          {/* Forward 15s */}
+          <button
+            onClick={() => skipForward(15)}
+            className="relative w-9 h-9 flex items-center justify-center border-2 border-black rounded bg-white text-black hover:bg-yellow-100 transition"
+          >
+            <RotateCw size={16} />
+            <span className="absolute text-[8px] font-bold bottom-0.5">15</span>
           </button>
 
           {/* Skip next */}
-          <button className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-white/10 transition-colors text-white">
-            <SkipForward size={18} strokeWidth={2} />
+          <button className="w-9 h-9 flex items-center justify-center border-2 border-black rounded bg-white text-black hover:bg-yellow-100 transition">
+            <SkipForward size={16} />
           </button>
         </div>
 
-        {/* Progress bar */}
-        <div
-          ref={trackRef}
-          onClick={handleTrackClick}
-          className="w-full max-w-[420px] h-1 bg-white/30 rounded-full cursor-pointer relative group"
-        >
+        {/* Progress + Time */}
+        <div className="flex items-center gap-2 flex-1">
+          <span className="text-xs font-mono w-10 text-right">
+            {formatTime(currentTime)}
+          </span>
           <div
-            className="h-full bg-white rounded-full relative"
-            style={{ width: `${progress}%` }}
+            className="flex-1 h-2 bg-white/30 rounded-full cursor-pointer relative"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const ratio = (e.clientX - rect.left) / rect.width;
+              seek(ratio * duration);
+            }}
           >
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div
+              className="h-full bg-white rounded-full"
+              style={{ width: `${progress}%` }}
+            />
           </div>
+          <span className="text-xs font-mono w-10">{formatTime(duration)}</span>
         </div>
-      </div>
 
-      {/* Right controls */}
-      <div className="flex items-center gap-1 w-[160px] justify-end flex-shrink-0">
-        <button className="flex items-center justify-center w-8 h-8 rounded hover:bg-white/10 transition-colors text-white/80 hover:text-white">
-          <List size={16} strokeWidth={1.8} />
-        </button>
-        <button className="flex items-center justify-center w-8 h-8 rounded hover:bg-white/10 transition-colors text-white/80 hover:text-white">
-          <Captions size={16} strokeWidth={1.8} />
-        </button>
-        <button className="flex items-center justify-center w-8 h-8 rounded hover:bg-white/10 transition-colors text-white/80 hover:text-white">
-          <Volume2 size={16} strokeWidth={1.8} />
-        </button>
-        {/* Volume track */}
-        <div className="w-16 h-1 bg-white/30 rounded-full cursor-pointer">
-          <div className="w-3/4 h-full bg-white rounded-full" />
+        {/* Right actions */}
+        <div className="flex items-center gap-2">
+          <button className="w-9 h-9 flex items-center justify-center border-2 border-black rounded bg-white text-black hover:bg-yellow-100 transition">
+            <ListMusic size={16} />
+          </button>
         </div>
-        <button className="flex items-center justify-center w-8 h-8 rounded hover:bg-white/10 transition-colors text-white/80 hover:text-white ml-1">
-          <Maximize2 size={14} strokeWidth={1.8} />
-        </button>
       </div>
     </div>
   );
