@@ -1,26 +1,89 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
+/* ============================================================
+   DESIGN TOKENS — Source of truth cho toàn bộ dự án
+   Tất cả màu, font, radius đều được khai báo 1 lần tại đây.
+   Dùng class Tailwind: bg-brand, text-ink, border-warm, ...
+   ============================================================ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* --- Màu chủ đạo --- */
+  --color-brand:        #E8580A;   /* Orange chính — CTA, active, accent */
+  --color-brand-hover:  #C94A06;   /* Hover của brand */
+  --color-brand-muted:  #E8580A1A; /* Brand 10% — highlight nền nhẹ */
+
+  --color-yellow:       #F5C842;   /* Vàng — search bar header */
+
+  /* --- Nền (light) --- */
+  --color-surface:      #E8DECE;   /* Nền trang chính */
+  --color-surface-raised: #F0EAE0; /* Sidebar, panel — nổi hơn surface */
+  --color-surface-card: #FAF6F0;   /* Card, popover — sáng nhất */
+  --color-surface-sunken: #D9CFBE; /* Input, track — chìm hơn surface */
+
+  /* --- Chữ --- */
+  --color-ink:          #1A1410;   /* Chữ chính — heading, body */
+  --color-ink-secondary:#6B5F52;   /* Chữ phụ — label, placeholder, caption */
+
+  /* --- Viền --- */
+  --color-warm-border:  #C8BDAE;   /* Border mặc định toàn dự án */
+
+  /* --- Shadcn aliases (bắt buộc để shadcn/ui hoạt động) --- */
+  --color-background:   var(--color-surface);
+  --color-foreground:   var(--color-ink);
+  --color-card:         var(--color-surface-card);
+  --color-card-foreground: var(--color-ink);
+  --color-popover:      var(--color-surface-card);
+  --color-popover-foreground: var(--color-ink);
+  --color-primary:      var(--color-brand);
+  --color-primary-foreground: var(--color-surface-card);
+  --color-secondary:    var(--color-surface-raised);
+  --color-secondary-foreground: var(--color-ink);
+  --color-muted:        var(--color-surface-sunken);
+  --color-muted-foreground: var(--color-ink-secondary);
+  --color-accent:       var(--color-yellow);
+  --color-accent-foreground: var(--color-ink);
+  --color-border:       var(--color-warm-border);
+  --color-input:        var(--color-warm-border);
+  --color-ring:         var(--color-brand);
+  --color-destructive:  oklch(0.577 0.245 27.325);
+
+  /* --- Font families --- */
+  --font-sans:    var(--font-dm-sans), sans-serif;
+  --font-display: var(--font-playfair), serif;
+  --font-mono:    ui-monospace, monospace;
+
+  /* --- Border radius scale --- */
+  --radius:    0.625rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+@layer base {
+  * {
+    @apply border-warm-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-surface text-ink font-sans;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+/* ============================================================
+   CUSTOM SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: theme(colors.surface-sunken); }
+::-webkit-scrollbar-thumb  { background: theme(colors.warm-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: theme(colors.ink-secondary); }
