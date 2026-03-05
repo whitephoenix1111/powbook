@@ -3,15 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home, LayoutGrid, BookOpen, Download,
+  Home, LayoutGrid,
   Bookmark, Settings, HelpCircle, LogOut, Flame,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { icon: Home,        label: "Home",     href: "/" },
   { icon: LayoutGrid,  label: "Category", href: "/category" },
-  { icon: BookOpen,    label: "Library",  href: "/library" },
-  { icon: Download,    label: "Download", href: "/downloads" },
   { icon: Bookmark,    label: "Saved",    href: "/saved" },
 ];
 

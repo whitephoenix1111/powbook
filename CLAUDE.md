@@ -1,130 +1,63 @@
-
 # Digital Library Hub - Bento UI (E-book & Audiobook)
 
-## 1. Tổng quan dự án (Overview)
+## 1. Tổng quan dự án
 
-Dự án xây dựng một nền tảng quản lý nội dung số (E-book và Audiobook) với giao diện hiện đại theo phong cách Bento Grid. Tập trung vào trải nghiệm người dùng (UI/UX) liền mạch, cho phép khám phá, đọc trực tuyến và nghe thử sách nói.
-
-* **Mục tiêu:** Fresher Portfolio Project.
-* **Phong cách:** Retro Editorial & Bento Grid.
+Nền tảng quản lý nội dung số (E-book và Audiobook) với giao diện Bento Grid phong cách Retro Editorial. Fresher Portfolio Project.
 
 ---
 
-## 2. Tech Stack (Công nghệ sử dụng)
+## 2. Tech Stack
 
-* **Frontend:** Next.js 15 (App Router), TypeScript, Tailwind CSS, Shadcn/ui.
-* **Backend & Auth:** Firebase (Firestore, Firebase Auth).
-* **Media Storage:** Cloudinary (Lưu trữ ảnh bìa, file PDF, file MP3 sample).
-* **State Management:** Zustand (Quản lý trạng thái Global Audio Player).
-* **Icons:** Lucide React.
-
----
-
-## 3. Danh sách Chức năng (Functional Requirements)
-
-### 3.1. Discovery & Dashboard
-
-* **Bento Grid Layout:** Hiển thị sách theo các khối kích thước khác nhau (Popular, Recommended).
-* **Category Filtering:** Lọc nhanh nội dung theo E-books, Audiobooks, Podcast, Comics.
-* **Global Search:** Tìm kiếm theo tiêu đề, tác giả hoặc chủ đề.
-
-### 3.2. Nội dung đa phương tiện (Hybrid Content)
-
-* **E-book Viewer:** Trình đọc file PDF trực tiếp trên trình duyệt.
-* **Audiobook Player:** Bộ điều khiển phát nhạc (Play/Pause/Seek) cho các đoạn nghe thử (Samples).
-* **Contextual Side Panel:** Hiển thị thông tin chi tiết (Metadata) bên phải màn hình khi chọn sách mà không điều hướng trang.
-
-### 3.3. Quản lý người dùng (Personalization)
-
-* **Authentication:** Đăng nhập/Đăng ký qua Firebase Auth (Google/Email).
-* **Library Management (CRUD):** * Lưu sách vào mục "Saved".
-* Nút "Borrow/Access" để mở khóa nội dung (giả lập thanh toán).
-
-* **Progress Tracking:** Lưu lại tiến độ đang đọc (trang số) hoặc đang nghe (giây số) vào Firestore.
+| Layer | Công nghệ |
+|---|---|
+| Frontend | Next.js 15 (App Router), TypeScript, Tailwind CSS, Shadcn/ui |
+| State Management | Zustand — Global Audio Player |
+| Audio | MP3 free từ LibriVox / archive.org |
+| Ảnh bìa | OpenLibrary CDN (free, không cần upload) |
+| Icons | Lucide React |
 
 ---
 
-## 4. Workflow & Data Flow (Sơ đồ luồng)
-
-```text
-[ USER INTERFACE ]
-       |
-       |-- (1) Tìm kiếm/Lọc ----> [ FIRESTORE QUERY ]
-       |-- (2) Chọn một mục  ----> [ STATE: Set Active Book ] ----> [ SIDE PANEL DISPLAY ]
-       |
-       |-- (3) Hành động:
-       |       |
-       |       |---> [ READ ] ----> [ GET PDF URL (Cloudinary) ] ----> [ PDF RENDERER ]
-       |       |---> [ PLAY ] ----> [ GET MP3 URL (Cloudinary) ] ----> [ ZUSTAND AUDIO PLAYER ]
-       |
-       |-- (4) Lưu/Mượn     ----> [ FIREBASE AUTH CHECK ] ----> [ UPDATE FIRESTORE ]
-                                          |
-                                          |---> [ SYNC UI STATE ]
+## 3. Kiến trúc Layout
 
 ```
+┌─────────────────────────────────────────────────┐
+│  app/(main)/layout.tsx  (render 1 lần duy nhất) │
+│                                                 │
+│  ┌──────────┐  ┌──────────────────────────────┐ │
+│  │ Sidebar  │  │ Navbar (top bar)              │ │
+│  │  72px    │  ├──────────────────────────────┤ │
+│  │  fixed   │  │ {children} — page content    │ │
+│  │          │  │  scroll độc lập              │ │
+│  └──────────┘  └──────────────────────────────┘ │
+│  AudioPlayer (fixed bottom, toàn app)            │
+└─────────────────────────────────────────────────┘
+
+app/(auth)/ — KHÔNG có layout → login/signin ẩn hoàn toàn shell
+```
+
+**Nguyên tắc:** Mỗi page trong `(main)` chỉ trả về phần content bên trong slot `children`. Sidebar và Navbar không bị re-mount khi navigate.
 
 ---
 
-## 5. Chiến lược triển khai (Implementation Strategy)
-
-1. **Giai đoạn 1:** Dựng Layout tĩnh với Tailwind & Shadcn (Bento Grid + Sidebar).
-2. **Giai đoạn 2:** Cấu hình Firebase & Cloudinary. Upload dữ liệu mẫu.
-3. **Giai đoạn 3:** Xử lý logic Click hiển thị Side Panel và Fetch dữ liệu từ Firestore.
-4. **Giai đoạn 4:** Xây dựng trình đọc PDF và Custom Audio Player bằng Zustand.
-5. **Giai đoạn 5:** Tối ưu Responsive và Performance (Image Optimization).
-
----
-
-## 6. Trạng thái hiện tại (Current Status)
-
-### ✅ Hoàn thành
-- Dự án khởi tạo tại `D:\powbook` — Next.js 15 (App Router) + TypeScript + Tailwind CSS
-- Shadcn/ui đã init + các components: button, badge, card, input, sheet, scroll-area, separator, avatar, dropdown-menu
-- Đã cài: firebase, zustand, lucide-react, next-cloudinary, react-pdf, @react-pdf-viewer/core
-- `app/layout.tsx` — fonts Playfair Display + DM Sans, metadata
-- `lib/mockData.ts` — types `Book`, mock data: `POPULAR_BOOKS`, `RECOMMENDED_AUDIOBOOKS`, `ACTIVE_BOOK`
-- `components/layout/Sidebar.tsx` — icon nav với active state, top/bottom items, logo
-- `components/book/BookCard.tsx` — cover image, title, author, star rating, bookmark icon, `onSelect` callback
-- `components/book/BookSidePanel.tsx` — header (cover + meta), action buttons (Read/Play Sample/Download/Save/Add), metadata table, description
-- `app/(auth)/login/page.tsx` — trang **Create an account**: carousel 4 slides + dot nav, social buttons (Google/Facebook/Apple), email/password form, toggle hiện mật khẩu, link → `/signin`
-- `app/(auth)/signin/page.tsx` — trang **Sign in**: cùng layout với login, form đăng nhập, link → `/login`
-
-- `lib/store/audioStore.ts` — Zustand store: play/pause/seek/speed/skipForward/skipBackward, formatTime helper
-- `lib/mockData.ts` — thêm `BookPage` interface, `audioUrl`, helper `getBookById()`
-- `components/player/AudioPlayer.tsx` — orange bar sát đáy, phát MP3 thật (LibriVox), speed toggle, rewind/forward 15s, progress bar click-to-seek
-- `components/viewer/PdfViewer.tsx` — 2 cột hình chữ nhật dựng đứng, border khung sách, số trang luôn ở đáy (`mt-auto`), 3 nút float ngoài khung (Bookmark/Translate/TextSize)
-- `app/(main)/reader/[id]/page.tsx` — route `/reader/9`, kết nối Sidebar + PdfViewer + AudioPlayer
-
-### 🚧 Skeleton (tạo file rồi nhưng chưa implement)
-- `components/bento/BentoGrid.tsx` — chỉ là `<div className="grid">`
-- `components/bento/BentoCard.tsx` — chỉ là placeholder div
-- `components/layout/Navbar.tsx` — chỉ là `<nav>Navbar</nav>`
-- `app/(main)/page.tsx` — chỉ có `<h1>Dashboard</h1>`
-
-### ❌ Chưa làm
-- `lib/firebase.ts` — chưa cấu hình
-- `lib/cloudinary.ts` — chưa cấu hình
-- `.env.local` — chưa tạo
-
----
-
-**Bước tiếp theo: Implement `BentoGrid`, `BentoCard`, `Navbar` + wire vào `app/(main)/page.tsx`**
-
----
-
-## 7. Cấu trúc thư mục đề xuất
+## 4. Cấu trúc thư mục
 
 ```
 app/
 ├── (auth)/
-│   └── login/page.tsx
+│   ├── login/page.tsx
+│   └── signin/page.tsx
 ├── (main)/
-│   └── page.tsx          # Dashboard chính
+│   ├── layout.tsx             # Shell: Sidebar + Navbar + AudioPlayer
+│   ├── page.tsx               # Dashboard
+│   ├── category/page.tsx
+│   ├── saved/page.tsx
+│   └── book/[id]/page.tsx
 ├── globals.css
-└── layout.tsx
+└── layout.tsx                 # Root layout: font, metadata
 
 components/
-├── ui/                   # Shadcn components (đã có)
+├── ui/                        # Shadcn
 ├── layout/
 │   ├── Sidebar.tsx
 │   └── Navbar.tsx
@@ -132,18 +65,178 @@ components/
 │   ├── BentoGrid.tsx
 │   └── BentoCard.tsx
 ├── book/
-│   ├── BookSidePanel.tsx
-│   └── BookCard.tsx
+│   ├── BookCard.tsx
+│   └── BookSidePanel.tsx
 ├── player/
 │   └── AudioPlayer.tsx
 └── viewer/
-    └── PdfViewer.tsx
+    └── BookTextViewer.tsx
 
 lib/
-├── firebase.ts
-├── cloudinary.ts
-└── store/
-    └── audioStore.ts     # Zustand
+├── mockData.ts
+└── store/audioStore.ts
 ```
 
 ---
+
+## 5. Kiến trúc Category & Book Type
+
+### Content type — 2 loại duy nhất
+- **E-Books** — detect qua `book.pages`
+- **Audiobooks** — detect qua `book.audioUrl`
+
+> Podcasts & Comics đã bỏ hoàn toàn — không có data, không xuất hiện ở bất kỳ đâu.
+
+### Sub-genre — 4 loại, multi-value
+- `history` / `fiction` / `science-technology` / `dark-thriller`
+- Một quyển sách có thể thuộc nhiều genre cùng lúc
+
+### Book type chính thức
+```ts
+type Genre = 'history' | 'fiction' | 'science-technology' | 'dark-thriller'
+
+type Book = {
+  id: string
+  title: string
+  author: string
+  cover: string
+  genres: Genre[]        // multi-value, filter bằng .includes()
+
+  pages?: BookPage[]     // có → là ebook, hiện nút "Read"
+  audioUrl?: string      // có → là audiobook, hiện nút "Play"
+                         // có cả 2 → xuất hiện ở cả 2 tab, hiện cả 2 nút
+}
+```
+
+> Không có field `type` cứng. Định dạng detect tự động qua optional fields. Không duplicate metadata.
+
+### Filter logic theo trang
+
+| Trang | Filter chiều 1 | Filter chiều 2 |
+|---|---|---|
+| Dashboard | Tabs: All / E-Books / Audiobooks | — |
+| Category page | Tabs: E-Books / Audiobooks | Tabs: All / History / Fiction / Sci & Tech / Dark & Thriller |
+| Saved | Tabs: Titles / Following / Lists / Notebook / History | — (chiều trạng thái lưu, khác hoàn toàn) |
+
+---
+
+## 6. Routes & Tính năng
+
+| Route | Trang | Tính năng chính |
+|---|---|---|
+| `/` | Dashboard | Bento Grid, filter tabs (All / E-Books / Audiobooks), BookSidePanel slide-in |
+| `/category` | Browse by Category | Filter 2 chiều: content type + genre |
+| `/saved` | Saved Books | Grid 3 cột, tabs (Titles active), search client-side, Read Preview |
+| `/book/[id]` | Book Reader | BookTextViewer 2 cột, text size (CSS var), bookmark (localStorage) |
+| `/login` | Create an account | — |
+| `/signin` | Sign in | — |
+
+**Sidebar navigation:** Home / Category / Saved / Settings / Support
+
+---
+
+## 7. Quyết định kỹ thuật
+
+| Khâu | Quyết định | Ghi chú |
+|---|---|---|
+| Nội dung sách | Mock text — `BookPage[]` | — |
+| Audio | Zustand + MP3 LibriVox | play/pause/seek/speed/skip ±15s |
+| Ảnh bìa | OpenLibrary CDN | — |
+| Bookmark | `localStorage` | key: `bookmark_${id}` |
+| Text size | CSS variable thật | `--reader-font-size` |
+| Translate | UI only | — |
+| Saved list | Mock cứng | Không sync với Dashboard bookmark |
+| Tabs ở /saved | Chỉ "Titles" active | Còn lại UI only |
+
+---
+
+## 8. Data Flow
+
+```
+[ USER INTERFACE ]
+       |
+       |-- Lọc/Search -------> [ MOCK DATA — client-side ]
+       |-- Chọn sách ---------> [ useState: selectedBook ] --> [ SIDE PANEL ]
+       |-- READ --------------> [ BookPage[] mock text ] ----> [ BookTextViewer ]
+       |-- PLAY --------------> [ MP3 URL (LibriVox) ] ------> [ Zustand AudioPlayer ]
+       |-- Bookmark ----------> [ localStorage ]
+```
+
+---
+
+## 9. Workflow & Logic quan trọng
+
+### Audio Player
+- Zustand store là nguồn sự thật duy nhất cho trạng thái audio
+- AudioPlayer render trong `(main)/layout.tsx` → persist xuyên navigate, không bị unmount
+- Khi user chọn sách mới → gọi `audioStore.setTrack()` → player tự cập nhật
+
+### Navigation flow
+- Dashboard → click sách → `BookSidePanel` slide-in (không navigate)
+- BookSidePanel → click "Read" → navigate `/book/[id]`
+- BookSidePanel → click "Play" → set Zustand store, AudioPlayer phản ứng
+- Category page → click sách → navigate thẳng `/book/[id]` (không qua SidePanel)
+
+### Bookmark
+- Lưu `localStorage` với key `bookmark_${id}`, giá trị là page index
+- Đọc lại khi mount `BookTextViewer`, scroll đến trang đã lưu
+- Không có sync server — reset nếu clear storage
+
+### Filter tabs
+- State local tại từng page, không lên Zustand
+- E-Books: `books.filter(b => b.pages)`
+- Audiobooks: `books.filter(b => b.audioUrl)`
+- Genre: `books.filter(b => b.genres.includes(selectedGenre))`
+- Có thể chain 2 filter: type trước, genre sau
+
+---
+
+## 10. Git Workflow
+
+```bash
+# Xem trạng thái
+git status
+git log --oneline -10
+
+# Commit
+git add .
+git commit -m "feat: "
+
+# Push
+git push origin main
+
+# Branch mới cho feature
+git checkout -b feat/ten-feature
+git push -u origin feat/ten-feature
+
+# Merge về main
+git checkout main
+git merge feat/ten-feature
+git push origin main
+```
+
+**Convention commit message:** `feat:` / `fix:` / `refactor:` / `style:` / `chore:`
+
+---
+
+## 11. Prompt mẫu cho session tiếp theo
+
+```
+Đọc `D:\powbook\CLAUDE.md`, bạn là claude desktop.
+
+Hôm nay tiếp tục refactor theo kiến trúc mới đã chốt:
+[dán nội dung mục 10 vào đây, hoặc mô tả task cụ thể]
+```
+
+---
+
+## 12. Trạng thái & Việc cần làm tiếp
+
+### Đã hoàn chỉnh
+- Toàn bộ 6 routes, layout shell, AudioPlayer global, BookTextViewer, Bookmark
+
+### Cần refactor theo kiến trúc mới
+- `lib/mockData.ts` — cập nhật Book type: thêm `genres[]`, đổi sang optional `pages?` / `audioUrl?`, bỏ field `type` cứng
+- `app/(main)/page.tsx` — filter tabs bỏ Podcasts & Comics, chỉ giữ All / E-Books / Audiobooks
+- `app/(main)/category/page.tsx` — refactor filter 2 chiều (content type + genre)
+- `components/book/BookSidePanel.tsx` — detect "Read" / "Play" / cả 2 dựa vào optional fields

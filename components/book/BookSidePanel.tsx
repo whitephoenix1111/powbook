@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Download, Bookmark, ListPlus, Play, Star } from "lucide-react";
 import type { Book } from "@/lib/mockData";
 
@@ -40,9 +41,12 @@ export default function BookSidePanel({ book }: BookSidePanelProps) {
 
       {/* Action buttons */}
       <div className="flex flex-col gap-2 p-4 border-b border-warm-border">
-        <button className="w-full py-2.5 rounded-lg border border-ink text-ink text-[13px] font-medium font-sans transition-colors hover:bg-ink hover:text-surface-card">
+        <Link
+          href={`/book/${book.id}`}
+          className="w-full py-2.5 rounded-lg border border-ink text-ink text-[13px] font-medium font-sans transition-colors hover:bg-ink hover:text-surface-card text-center block no-underline"
+        >
           Read Free For 30 Days
-        </button>
+        </Link>
         <button className="w-full py-2.5 rounded-lg flex items-center justify-center gap-2 bg-brand text-surface-card text-[13px] font-medium font-sans transition-opacity hover:opacity-90">
           <Play size={14} fill="white" strokeWidth={0} />
           Play Sample
