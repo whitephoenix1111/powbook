@@ -191,46 +191,7 @@ type Book = {
 
 ---
 
-## 10. Git Workflow
-
-```bash
-# Xem trạng thái
-git status
-git log --oneline -10
-
-# Commit
-git add .
-git commit -m "feat: "
-
-# Push
-git push origin main
-
-# Branch mới cho feature
-git checkout -b feat/ten-feature
-git push -u origin feat/ten-feature
-
-# Merge về main
-git checkout main
-git merge feat/ten-feature
-git push origin main
-```
-
-**Convention commit message:** `feat:` / `fix:` / `refactor:` / `style:` / `chore:`
-
----
-
-## 11. Prompt mẫu cho session tiếp theo
-
-```
-Đọc `D:\powbook\CLAUDE.md`, bạn là claude desktop.
-
-Hôm nay tiếp tục refactor theo kiến trúc mới đã chốt:
-[dán nội dung mục 10 vào đây, hoặc mô tả task cụ thể]
-```
-
----
-
-## 12. Trạng thái & Việc cần làm tiếp
+## 10. Trạng thái & Việc cần làm tiếp
 
 ### Đã hoàn chỉnh
 - Toàn bộ 6 routes, layout shell, AudioPlayer global, BookTextViewer, Bookmark

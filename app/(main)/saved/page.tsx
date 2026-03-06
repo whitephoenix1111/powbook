@@ -2,9 +2,9 @@
 
 import { useState, useMemo } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { Search, BookOpen, Download, ListPlus, Star } from "lucide-react";
 import { ALL_BOOKS, ACTIVE_BOOK, type Book } from "@/lib/mockData";
+import { useBookPanelStore } from "@/lib/store/bookPanelStore";
 
 /* ── Mock saved list ── */
 const SAVED_BOOKS: (Book & { pagesLeft: number })[] = [
@@ -17,13 +17,10 @@ const SAVED_BOOKS: (Book & { pagesLeft: number })[] = [
 
 const TABS = ["Titles", "Following", "Lists", "Notebook", "History"] as const;
 
-/* ────────────────────────────────────────────────
-   Page component
-   Shell (Sidebar + Navbar) được app/(main)/layout.tsx xử lý.
-──────────────────────────────────────────────── */
 export default function SavedPage() {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("Titles");
   const [query, setQuery] = useState("");
+  const { toggle, selectedBook } = useBookPanelStore();
 
   const filtered = useMemo(
     () =>
@@ -36,11 +33,11 @@ export default function SavedPage() {
   );
 
   return (
-    <main className="flex-1 overflow-y-auto px-6 py-6 pb-32 space-y-5">
+    <main className="flex-1 px-6 py-6 space-y-5">
 
       <h1 className="font-display text-2xl font-bold text-ink">My Library</h1>
 
-      {/* ── Tabs ── */}
+      {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-warm-border">
         {TABS.map((tab) => (
           <button
@@ -76,11 +73,16 @@ export default function SavedPage() {
             />
           </div>
 
-          {/* Grid 3 cột */}
+          {/* Grid 3 col */}
           {filtered.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filtered.map((book) => (
-                <SavedBookCard key={book.id} book={book} />
+                <SavedBookCard
+                  key={book.id}
+                  book={book}
+                  isActive={selectedBook?.id === book.id}
+                  onSelect={() => toggle(book)}
+                />
               ))}
             </div>
           ) : (
@@ -102,10 +104,26 @@ export default function SavedPage() {
   );
 }
 
-/* ─── SavedBookCard ─────────────────────────────── */
-function SavedBookCard({ book }: { book: Book & { pagesLeft: number } }) {
+/* SavedBookCard */
+function SavedBookCard({
+  book,
+  isActive,
+  onSelect,
+}: {
+  book: Book & { pagesLeft: number };
+  isActive: boolean;
+  onSelect: () => void;
+}) {
   return (
-    <div className="flex gap-3 rounded-2xl border border-warm-border bg-surface-card p-4 hover:shadow-md transition-shadow">
+    <div
+      onClick={onSelect}
+      className={`flex gap-3 rounded-2xl border bg-surface-card p-4 cursor-pointer transition-all
+        ${
+          isActive
+            ? "border-brand border-2 shadow-md shadow-brand/15"
+            : "border-warm-border hover:shadow-md hover:border-brand/40"
+        }`}
+    >
       <div className="relative flex-shrink-0 w-[72px] h-[96px] rounded-lg overflow-hidden border border-warm-border bg-surface-sunken">
         <Image
           src={book.cover}
@@ -117,7 +135,8 @@ function SavedBookCard({ book }: { book: Book & { pagesLeft: number } }) {
         />
       </div>
       <div className="flex flex-col flex-1 min-w-0 gap-1">
-        <h3 className="font-display text-[14px] font-bold text-ink leading-tight line-clamp-2">
+        <h3 className={`font-display text-[14px] font-bold leading-tight line-clamp-2 transition-colors
+          ${isActive ? "text-brand" : "text-ink"}`}>
           {book.title}
         </h3>
         <p className="font-sans text-[12px] text-ink-secondary">{book.author}</p>
@@ -140,17 +159,24 @@ function SavedBookCard({ book }: { book: Book & { pagesLeft: number } }) {
         <p className="font-mono text-[10px] text-ink-secondary/70 mt-auto">
           {book.pagesLeft} pages left
         </p>
-        <div className="flex items-center gap-2 mt-2">
-          <Link
-            href={`/book/${book.id}`}
-            className="flex-1 py-1.5 rounded-lg bg-brand text-white font-sans text-[12px] font-medium text-center no-underline hover:opacity-90 transition-opacity"
+        {/* Action row — stopPropagation để không trigger onSelect khi click icon */}
+        <div
+          className="flex items-center gap-2 mt-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span className="flex-1 py-1.5 rounded-lg bg-brand/10 text-brand font-sans text-[12px] font-medium text-center">
+            View Details
+          </span>
+          <button
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-warm-border bg-surface-raised text-ink-secondary hover:bg-surface-sunken transition-colors"
+            title="Download"
           >
-            Read Preview
-          </Link>
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg border border-warm-border bg-surface-raised text-ink-secondary hover:bg-surface-sunken transition-colors" title="Download">
             <Download size={14} />
           </button>
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg border border-warm-border bg-surface-raised text-ink-secondary hover:bg-surface-sunken transition-colors" title="Add to List">
+          <button
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-warm-border bg-surface-raised text-ink-secondary hover:bg-surface-sunken transition-colors"
+            title="Add to List"
+          >
             <ListPlus size={14} />
           </button>
         </div>
