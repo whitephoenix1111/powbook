@@ -20,38 +20,40 @@ export default function MainLayout({
       {/* ── Cột 1: Sidebar ── */}
       <Sidebar />
 
-      {/* ── Cột 2 + 3: toàn bộ phần còn lại, flex ngang ── */}
-      <div className="flex flex-1 min-w-0 overflow-hidden">
+      {/* ── Cột 2: flex-col wrapper (Navbar + content + AudioPlayer) ── */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
 
-        {/* ── Cột 2: Navbar trên + Content dưới ── */}
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-          {/* Navbar chỉ chiếm chiều ngang của cột 2 */}
-          <Navbar />
+        {/* ── Row: content area + SidePanel ── */}
+        <div className="flex flex-1 min-w-0 overflow-hidden">
 
-          {/* Scroll area */}
-          <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden flex flex-col">
-            <div className="flex-1">{children}</div>
-            <Footer />
-          </div>
-        </div>
-
-        {/* ── Cột 3: BookSidePanel — bắt đầu từ đỉnh, ngang hàng Navbar ── */}
-        <div
-          className={`flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden
-            border-l border-warm-border bg-surface-raised
-            ${selectedBook ? "w-[280px]" : "w-0 border-l-0"}`}
-        >
-          {selectedBook && (
-            <div className="w-[280px] h-full overflow-y-auto">
-              <BookSidePanel book={selectedBook} />
+          {/* ── Content column ── */}
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+            <Navbar />
+            <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden flex flex-col">
+              <div className="flex-1">{children}</div>
+              <Footer />
             </div>
-          )}
+          </div>
+
+          {/* ── Cột 3: BookSidePanel ── */}
+          <div
+            className={`flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden
+              border-l border-warm-border bg-surface-raised
+              ${selectedBook ? "w-[280px]" : "w-0 border-l-0"}`}
+          >
+            {selectedBook && (
+              <div className="w-[280px] h-full overflow-y-auto">
+                <BookSidePanel book={selectedBook} />
+              </div>
+            )}
+          </div>
+
         </div>
+
+        {/* ── AudioPlayer — bottom của content column, full width ── */}
+        <AudioPlayer />
 
       </div>
-
-      {/* ── AudioPlayer — global fixed bottom ── */}
-      <AudioPlayer />
     </div>
   );
 }

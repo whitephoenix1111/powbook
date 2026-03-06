@@ -2,148 +2,178 @@
 
 import { useState, useEffect } from "react";
 import { Book } from "@/lib/mockData";
-import { Bookmark, Languages } from "lucide-react";
+import { Bookmark, Languages, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface BookTextViewerProps {
   book: Book;
 }
 
-const FONT_SIZES = [13, 15, 17]; // px — maps to CSS variable
+const FONT_SIZES = [14, 16, 18];
 
 export default function BookTextViewer({ book }: BookTextViewerProps) {
   const BOOKMARK_KEY = `bookmark_${book.id}`;
 
-  const [fontIndex, setFontIndex] = useState(1);
-  const [bookmarked, setBookmarked] = useState(false);
+  const [fontIndex, setFontIndex]     = useState(1);
+  const [bookmarked, setBookmarked]   = useState(false);
+  const [pageOffset, setPageOffset]   = useState(0);
 
-  /* ── Load bookmark từ localStorage khi mount ── */
   useEffect(() => {
     try {
       const stored = localStorage.getItem(BOOKMARK_KEY);
       if (stored === "true") setBookmarked(true);
-    } catch {
-      // localStorage không khả dụng (SSR guard)
-    }
+    } catch { /* SSR guard */ }
   }, [BOOKMARK_KEY]);
 
-  /* ── Lưu bookmark vào localStorage mỗi khi thay đổi ── */
   const toggleBookmark = () => {
     const next = !bookmarked;
     setBookmarked(next);
-    try {
-      localStorage.setItem(BOOKMARK_KEY, String(next));
-    } catch {
-      // ignore
-    }
+    try { localStorage.setItem(BOOKMARK_KEY, String(next)); } catch { /* ignore */ }
   };
 
-  const pages = book.pages ?? [];
-  const leftPage = pages[0];
-  const rightPage = pages[1];
-
-  /* ── CSS variable text size ── */
+  const pages      = book.pages ?? [];
+  const totalSpreads = Math.ceil(pages.length / 2);
+  const leftPage   = pages[pageOffset * 2];
+  const rightPage  = pages[pageOffset * 2 + 1];
   const textSizePx = FONT_SIZES[fontIndex];
 
   return (
     <div
-      className="flex flex-1 h-full items-stretch gap-3 px-6 pt-6 overflow-hidden"
+      className="flex flex-1 h-full gap-4 px-6 py-5 overflow-hidden"
       style={{ "--reader-font-size": `${textSizePx}px` } as React.CSSProperties}
     >
-      {/* ── Book frame (2 columns) — full height, upright rectangle ── */}
-      <div className="flex flex-1 h-full border-2 border-black overflow-hidden bg-[#FDFAF4]">
 
-        {/* Left page */}
-        <div className="flex flex-col flex-1 border-r-2 border-black px-10 py-8 overflow-hidden">
-          {leftPage ? (
-            <>
-              {leftPage.chapter && (
+      {/* ══════════════════════════════════
+          Book spread
+      ══════════════════════════════════ */}
+      <div className="flex flex-col flex-1 overflow-hidden gap-3">
+
+        {/* Pages */}
+        <div className="flex flex-1 overflow-hidden rounded-2xl border border-warm-border shadow-sm bg-[#FDFAF4]">
+
+          {/* Left page */}
+          <div className="flex flex-col flex-1 border-r border-warm-border px-10 py-8 overflow-hidden">
+            {leftPage ? (
+              <>
+                {leftPage.chapter && (
+                  <p
+                    className="font-display font-bold text-ink mb-5 whitespace-pre-line flex-shrink-0 leading-snug"
+                    style={{ fontSize: `calc(var(--reader-font-size) * 1.05)` }}
+                  >
+                    {leftPage.chapter}
+                  </p>
+                )}
                 <p
-                  className="font-bold mb-4 whitespace-pre-line font-mono flex-shrink-0"
+                  className="font-sans text-ink leading-[1.9] text-justify"
                   style={{ fontSize: "var(--reader-font-size)" }}
                 >
-                  {leftPage.chapter}
+                  {leftPage.content}
                 </p>
-              )}
+              </>
+            ) : (
+              <p className="font-sans text-sm text-ink-secondary">No content</p>
+            )}
+            <div className="mt-auto pt-4 text-center font-sans text-[11px] text-ink-secondary/50 tracking-widest flex-shrink-0">
+              {leftPage?.pageNumber?.toString().padStart(2, "0")}
+            </div>
+          </div>
+
+          {/* Right page */}
+          <div className="flex flex-col flex-1 px-10 py-8 overflow-hidden">
+            <p className="font-sans text-[10px] text-ink-secondary/40 text-center mb-6 tracking-[0.2em] uppercase flex-shrink-0">
+              {book.title}
+            </p>
+            {rightPage ? (
               <p
-                className="font-mono leading-relaxed text-justify overflow-hidden"
+                className="font-sans text-ink leading-[1.9] text-justify"
                 style={{ fontSize: "var(--reader-font-size)" }}
               >
-                {leftPage.content}
+                {rightPage.content}
               </p>
-            </>
-          ) : (
-            <p className="text-gray-400 font-mono text-sm">No content</p>
-          )}
-          <div className="mt-auto pt-4 text-center font-mono text-xs text-gray-400 flex-shrink-0">
-            {leftPage?.pageNumber?.toString().padStart(2, "0")}
+            ) : book.description ? (
+              <>
+                <hr className="mb-6 border-warm-border flex-shrink-0" />
+                <p
+                  className="font-sans text-ink-secondary leading-[1.9] text-justify italic"
+                  style={{ fontSize: "var(--reader-font-size)" }}
+                >
+                  {book.description}
+                </p>
+              </>
+            ) : null}
+            <div className="mt-auto pt-4 text-center font-sans text-[11px] text-ink-secondary/50 tracking-widest flex-shrink-0">
+              {(rightPage ?? leftPage)?.pageNumber?.toString().padStart(2, "0")}
+            </div>
           </div>
+
         </div>
 
-        {/* Right page */}
-        <div className="flex flex-col flex-1 px-10 py-8 overflow-hidden">
-          <p className="font-mono text-xs text-gray-400 text-center mb-6 tracking-widest uppercase flex-shrink-0">
-            {book.title}
-          </p>
-          {rightPage ? (
-            <p
-              className="font-mono leading-relaxed text-justify overflow-hidden"
-              style={{ fontSize: "var(--reader-font-size)" }}
+        {/* ── Page navigation ── */}
+        {totalSpreads > 1 && (
+          <div className="flex items-center justify-center gap-3 flex-shrink-0">
+            <button
+              onClick={() => setPageOffset((p) => Math.max(0, p - 1))}
+              disabled={pageOffset === 0}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-warm-border
+                text-ink-secondary hover:bg-surface-sunken hover:text-ink transition-colors
+                disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              {rightPage.content}
-            </p>
-          ) : (
-            <p className="text-gray-400 font-mono text-sm">No content</p>
-          )}
-          {book.description && (
-            <>
-              <hr className="my-6 border-black/20 flex-shrink-0" />
-              <p
-                className="font-mono leading-relaxed text-justify text-gray-600 overflow-hidden"
-                style={{ fontSize: "var(--reader-font-size)" }}
-              >
-                {book.description}
-              </p>
-            </>
-          )}
-          <div className="mt-auto pt-4 text-center font-mono text-xs text-gray-400 flex-shrink-0">
-            {rightPage?.pageNumber?.toString().padStart(2, "0")}
+              <ChevronLeft size={14} strokeWidth={2} />
+            </button>
+            <span className="font-sans text-[12px] text-ink-secondary">
+              {pageOffset + 1} / {totalSpreads}
+            </span>
+            <button
+              onClick={() => setPageOffset((p) => Math.min(totalSpreads - 1, p + 1))}
+              disabled={pageOffset >= totalSpreads - 1}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-warm-border
+                text-ink-secondary hover:bg-surface-sunken hover:text-ink transition-colors
+                disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight size={14} strokeWidth={2} />
+            </button>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* ── 3 action buttons ── */}
-      <div className="flex flex-col gap-2 pt-4 flex-shrink-0">
-        {/* Bookmark — localStorage */}
+      {/* ══════════════════════════════════
+          Action buttons — right rail
+      ══════════════════════════════════ */}
+      <div className="flex flex-col gap-2 pt-1 flex-shrink-0">
+
+        {/* Bookmark */}
         <button
           onClick={toggleBookmark}
-          className={`w-10 h-10 flex items-center justify-center border-2 border-black rounded transition ${
-            bookmarked
-              ? "bg-[#F97316] text-white"
-              : "bg-white text-black hover:bg-orange-100"
-          }`}
-          title={bookmarked ? "Remove bookmark" : "Bookmark this page"}
+          title={bookmarked ? "Remove bookmark" : "Bookmark"}
+          className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-all
+            ${bookmarked
+              ? "bg-brand border-brand text-white shadow-sm"
+              : "border-warm-border bg-surface-card text-ink-secondary hover:border-brand/40 hover:text-brand"
+            }`}
         >
-          <Bookmark size={16} fill={bookmarked ? "white" : "none"} />
+          <Bookmark size={14} fill={bookmarked ? "white" : "none"} strokeWidth={1.8} />
         </button>
 
-        {/* Translate — UI only */}
+        {/* Translate */}
         <button
-          className="w-10 h-10 flex items-center justify-center border-2 border-black rounded bg-white text-black hover:bg-orange-100 transition"
           title="Translate (coming soon)"
+          className="w-9 h-9 flex items-center justify-center rounded-xl border border-warm-border
+            bg-surface-card text-ink-secondary hover:border-brand/40 hover:text-brand transition-all"
         >
-          <Languages size={16} />
+          <Languages size={14} strokeWidth={1.8} />
         </button>
 
-        {/* Text size — CSS variable thật */}
+        {/* Text size */}
         <button
           onClick={() => setFontIndex((i) => (i + 1) % FONT_SIZES.length)}
-          className="w-10 h-10 flex items-center justify-center border-2 border-black rounded bg-[#F97316] text-white font-bold hover:bg-orange-600 transition"
           title={`Text size: ${textSizePx}px`}
+          className="w-9 h-9 flex items-center justify-center rounded-xl border border-warm-border
+            bg-surface-card text-ink-secondary hover:border-brand/40 hover:text-brand transition-all font-display font-bold"
           style={{ fontSize: `${11 + fontIndex * 2}px` }}
         >
           T
         </button>
       </div>
+
     </div>
   );
 }

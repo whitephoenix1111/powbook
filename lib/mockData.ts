@@ -17,6 +17,10 @@ export interface Book {
   audioUrl?: string       // có → là audiobook, hiện nút "Play"
                           // có cả 2 → xuất hiện ở cả 2 tab, hiện cả 2 nút
 
+  // Pricing
+  isFree?: boolean      // true → badge "Free", nút "Get Free"
+  price?: number        // undefined nếu isFree. VD: 9.99
+
   // Metadata phụ
   length?: string
   format?: string
@@ -40,6 +44,8 @@ export const POPULAR_BOOKS: Book[] = [
     rating: 5,
     ratingCount: "2.1K",
     genres: ["fiction"],
+    isFree: false,
+    price: 9.99,
     pages: [
       {
         pageNumber: 1,
@@ -62,6 +68,8 @@ export const POPULAR_BOOKS: Book[] = [
     rating: 4,
     ratingCount: "3.4K",
     genres: ["fiction", "history"],
+    isFree: false,
+    price: 12.99,
     pages: [
       {
         pageNumber: 1,
@@ -79,6 +87,8 @@ export const POPULAR_BOOKS: Book[] = [
     rating: 5,
     ratingCount: "4.2K",
     genres: ["fiction", "dark-thriller"],
+    isFree: false,
+    price: 11.99,
     pages: [
       {
         pageNumber: 1,
@@ -96,6 +106,8 @@ export const POPULAR_BOOKS: Book[] = [
     rating: 4,
     ratingCount: "1.8K",
     genres: ["fiction"],
+    isFree: false,
+    price: 8.99,
     pages: [
       {
         pageNumber: 1,
@@ -113,6 +125,8 @@ export const POPULAR_BOOKS: Book[] = [
     rating: 4,
     ratingCount: "5.6K",
     genres: ["fiction", "dark-thriller"],
+    isFree: false,
+    price: 10.99,
     pages: [
       {
         pageNumber: 1,
@@ -133,6 +147,7 @@ export const RECOMMENDED_AUDIOBOOKS: Book[] = [
     rating: 4,
     ratingCount: "980",
     genres: ["fiction"],
+    isFree: true,
     length: "18 hr 24 min",
     description: "A wildly original novel about food, adventure, and the unexpected power of human connection across cultural boundaries.",
     audioUrl: "https://archive.org/download/alice_wonderland_librivox/awic_01_carroll_64kb.mp3",
@@ -145,6 +160,7 @@ export const RECOMMENDED_AUDIOBOOKS: Book[] = [
     rating: 5,
     ratingCount: "7.3K",
     genres: ["fiction", "history"],
+    isFree: true,
     length: "2 hr 10 min",
     description: "A spellbinding and humorous portrait of the fictional sport of Quidditch — the complete history of the game, for Potterheads everywhere.",
     audioUrl: "https://archive.org/download/alice_wonderland_librivox/awic_01_carroll_64kb.mp3",
@@ -157,6 +173,8 @@ export const RECOMMENDED_AUDIOBOOKS: Book[] = [
     rating: 5,
     ratingCount: "2.1K",
     genres: ["fiction"],
+    isFree: false,
+    price: 14.99,
     length: "4 hr 38 min",
     description: "A portrait of the Jazz Age in all of its decadence — Jay Gatsby's obsessive pursuit of the past and the elusive green light across the water.",
     audioUrl: "https://archive.org/download/alice_wonderland_librivox/awic_02_carroll_64kb.mp3",
@@ -170,6 +188,8 @@ export const RECOMMENDED_AUDIOBOOKS: Book[] = [
     rating: 5,
     ratingCount: "12K",
     genres: ["fiction"],
+    isFree: false,
+    price: 19.99,
     length: "8 hr 18 min",
     description: "The boy who lived. Jim Dale's iconic narration brings Hogwarts to life in this unforgettable U.S. edition of the beloved series.",
     audioUrl: "https://archive.org/download/alice_wonderland_librivox/awic_01_carroll_64kb.mp3",
@@ -186,6 +206,8 @@ export const ACTIVE_BOOK: Book = {
   rating: 5,
   ratingCount: "1.5K",
   genres: ["fiction"],
+  isFree: false,
+  price: 24.99,
   length: "22 hr 56 min",
   format: "E-Book + Audiobook",
   publisher: "Audible Verse, Inc.",
@@ -198,7 +220,14 @@ export const ACTIVE_BOOK: Book = {
       pageNumber: 5,
       chapter: "Chapter 01:\nThe Ordinary World of the Dursleys",
       content:
-        "The Dursleys are a well-to-do, status-conscious family living in Surrey, England. Mr. Dursley notices strange things on his way to work — people in cloaks, owls flying in daylight, whispers about someone called You-Know-Who. He dismisses it all and says nothing to his wife. That night, Albus Dumbledore appears on their street.",
+        `The Dursleys are a well-to-do, status-conscious family living in Surrey, England. Mr. Dursley notices strange things on his way to work — people in cloaks, owls flying in daylight, whispers about someone called You-Know-Who. He dismisses it all and says nothing to his wife. 
+        That night, Albus Dumbledore appears on their street.Contrary to popular belief, Lorem Ipsum is not simply random text.
+        
+        It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. 
+        
+        Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of de Finibus Bonorum et Malorum (The Extremes of Good and Evil) by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, Lorem ipsum dolor sit amet.., comes from a line in section 1.10.32.        
+        
+        The standard chunk of Lorem Ipsum used since the 1500s is reproduced below for those interested. Sections 1.10.32 and 1.10.33 from de Finibus Bonorum et Malorum by Cicero are also reproduced in their exact original form, accompanied by English versions from the 1914 translation by H. Rackham.`,
     },
     {
       pageNumber: 6,

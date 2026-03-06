@@ -16,6 +16,7 @@ interface AudioState {
   audioRef: HTMLAudioElement | null;
 
   // Actions
+  dismiss: () => void;
   setBook: (book: Book, audioUrl: string) => void;
   setAudioRef: (ref: HTMLAudioElement | null) => void;
   play: () => void;
@@ -38,6 +39,13 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   duration: 0,
   playbackRate: 1,
   audioRef: null,
+
+  // Ẩn player (reset toàn bộ state)
+  dismiss: () => {
+    const { audioRef } = get();
+    audioRef?.pause();
+    set({ currentBook: null, audioUrl: null, isPlaying: false, currentTime: 0, duration: 0 });
+  },
 
   // Set book & url (gọi khi mở trang reader)
   setBook: (book, audioUrl) => {

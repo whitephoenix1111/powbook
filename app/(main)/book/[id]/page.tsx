@@ -5,12 +5,9 @@ import { useParams, notFound } from "next/navigation";
 import { getBookById } from "@/lib/mockData";
 import { useAudioStore } from "@/lib/store/audioStore";
 import BookTextViewer from "@/components/viewer/BookTextViewer";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
-/* ────────────────────────────────────────────────
-   Book Reader Page
-   Shell (Sidebar + Navbar) được app/(main)/layout.tsx xử lý.
-   Page này chỉ chứa title strip + viewer.
-──────────────────────────────────────────────── */
 export default function BookPage() {
   const { id } = useParams<{ id: string }>();
   const book = getBookById(id);
@@ -25,23 +22,38 @@ export default function BookPage() {
   if (!book) return notFound();
 
   return (
-    /* flex-1 + flex-col: lấp đầy vùng content trong layout */
-    <div className="flex flex-col flex-1 overflow-hidden">
+    <div className="flex flex-col flex-1 overflow-hidden h-full">
 
-      {/* Title strip — ngay dưới Navbar */}
-      <div className="flex items-center gap-4 px-6 py-2.5 border-b-2 border-black bg-yellow flex-shrink-0">
-        <span className="font-bold font-mono text-sm truncate">{book.title}</span>
+      {/* ── Title strip ── */}
+      <div className="flex items-center gap-3 px-5 py-2.5 border-b border-warm-border bg-surface-raised flex-shrink-0">
+        <Link
+          href="/"
+          className="w-7 h-7 flex items-center justify-center rounded-lg text-ink-secondary hover:bg-surface-sunken hover:text-ink transition-colors flex-shrink-0"
+        >
+          <ArrowLeft size={14} strokeWidth={2} />
+        </Link>
+
+        <div className="w-px h-4 bg-warm-border" />
+
+        <p className="font-display text-[14px] font-bold text-ink truncate">
+          {book.title}
+        </p>
         {book.author && (
-          <span className="text-xs font-mono text-black/60">— {book.author}</span>
+          <span className="font-sans text-[12px] text-ink-secondary flex-shrink-0">
+            — {book.author}
+          </span>
         )}
         {book.narrator && (
-          <span className="text-xs font-mono text-black/60">
-            | Narrator: {book.narrator}
-          </span>
+          <>
+            <div className="w-px h-3 bg-warm-border flex-shrink-0" />
+            <span className="font-sans text-[12px] text-ink-secondary flex-shrink-0">
+              Narrator: {book.narrator}
+            </span>
+          </>
         )}
       </div>
 
-      {/* Reader content */}
+      {/* ── Reader ── */}
       <div className="flex flex-1 overflow-hidden">
         <BookTextViewer book={book} />
       </div>
