@@ -29,11 +29,19 @@ export default function AddToListModal({ book, onClose }: AddToListModalProps) {
   function handleCreate() {
     const name = newListName.trim();
     if (!name) return;
-    const id = createList(name);
-    addToList(id, book);
-    toast.success(`Added to "${name}"`);
-    setNewListName("");
-    setShowInput(false);
+    handleCreateAsync(name);
+  }
+
+  async function handleCreateAsync(name: string) {
+    try {
+      const id = await createList(name);
+      await addToList(id, book);
+      toast.success(`Added to "${name}"`);
+      setNewListName("");
+      setShowInput(false);
+    } catch (error) {
+      toast.error("Failed to create list");
+    }
   }
 
   return (
