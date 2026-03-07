@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { BookOpen, Headphones, ChevronRight, Heart, Check, Search, X } from "lucide-react";
@@ -37,11 +37,16 @@ export default function CategoryPage() {
   const [query,      setQuery]      = useState("");
   const { selectedBook, toggle }    = useBookPanelStore();
 
-  useEffect(() => {
+  // Sync contentTab khi URL thay đổi — setState during render (React-recommended
+  // pattern cho derived state từ props, tránh useEffect cascading renders)
+  const [prevSearchParams, setPrevSearchParams] = useState(searchParams);
+  if (prevSearchParams !== searchParams) {
+    setPrevSearchParams(searchParams);
     const t = searchParams.get("type") as ContentTab | null;
     if (t === "E-Books" || t === "Audiobooks") setContentTab(t);
-    setQuery(""); // reset search khi đổi type qua URL
-  }, [searchParams]);
+    setQuery("");
+  }
+
   const { isOwned, isWishlisted, acquire, toggleWishlist } = useLibraryStore();
 
   /* Filter */

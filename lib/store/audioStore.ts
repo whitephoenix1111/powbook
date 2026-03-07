@@ -2,20 +2,14 @@ import { create } from "zustand";
 import { Book } from "@/lib/mockData";
 
 interface AudioState {
-  // Current book playing
   currentBook: Book | null;
   audioUrl: string | null;
-
-  // Playback state
   isPlaying: boolean;
   currentTime: number;
   duration: number;
   playbackRate: number;
-
-  // Audio element ref (không lưu vào persist)
   audioRef: HTMLAudioElement | null;
 
-  // Actions
   dismiss: () => void;
   setBook: (book: Book, audioUrl: string) => void;
   setAudioRef: (ref: HTMLAudioElement | null) => void;
@@ -31,7 +25,6 @@ interface AudioState {
 }
 
 export const useAudioStore = create<AudioState>((set, get) => ({
-  // Initial state
   currentBook: null,
   audioUrl: null,
   isPlaying: false,
@@ -40,66 +33,60 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   playbackRate: 1,
   audioRef: null,
 
-  // Ẩn player (reset toàn bộ state)
   dismiss: () => {
     const { audioRef } = get();
     audioRef?.pause();
     set({ currentBook: null, audioUrl: null, isPlaying: false, currentTime: 0, duration: 0 });
   },
 
-  // Set book & url (gọi khi mở trang reader)
   setBook: (book, audioUrl) => {
-    set({ currentBook: book, audioUrl, currentTime: 0, isPlaying: false });
+    set({ currentBook: book, audioUrl, currentTime: 0, duration: 0, isPlaying: true });
   },
 
-  // Lưu ref của <audio> element
-  setAudioRef: (ref) => set({ audioRef: ref }),
-
-  play: () => {
-    const { audioRef } = get();
-    audioRef?.play();
-    set({ isPlaying: true });
+  setAudioRef: (ref) => {
+    console.log("[AudioStore] setAudioRef →", ref ? "HTMLAudioElement registered" : "null (unmounted)");
+    set({ audioRef: ref });
   },
 
-  pause: () => {
-    const { audioRef } = get();
-    audioRef?.pause();
-    set({ isPlaying: false });
-  },
-
-  togglePlay: () => {
-    const { isPlaying } = get();
-    if (isPlaying) {
-      get().pause();
-    } else {
-      get().play();
-    }
-  },
+  play: () => set({ isPlaying: true }),
+  pause: () => set({ isPlaying: false }),
+  togglePlay: () => set((s) => ({ isPlaying: !s.isPlaying })),
 
   seek: (time) => {
     const { audioRef } = get();
-    if (audioRef) {
-      audioRef.currentTime = time;
-      set({ currentTime: time });
-    }
+    if (!audioRef) return;
+    audioRef.currentTime = time;
+    set({ currentTime: time });
   },
 
-  skipForward: (seconds = 15) => {
-    const { audioRef, currentTime, duration } = get();
-    const newTime = Math.min(currentTime + seconds, duration);
-    if (audioRef) {
-      audioRef.currentTime = newTime;
-      set({ currentTime: newTime });
-    }
+  skipForward: (seconds = 10) => {
+    const { audioRef } = get();
+    console.log("[AudioStore] skipForward called", {
+      seconds,
+      audioRef: audioRef ? "exists" : "NULL ← bug here",
+      currentTime: audioRef?.currentTime,
+      duration: audioRef?.duration,
+    });
+    if (!audioRef) return;
+    const newTime = Math.min(audioRef.currentTime + seconds, audioRef.duration || 0);
+    console.log("[AudioStore] skipForward → seeking to", newTime);
+    audioRef.currentTime = newTime;
+    set({ currentTime: newTime });
   },
 
-  skipBackward: (seconds = 15) => {
-    const { audioRef, currentTime } = get();
-    const newTime = Math.max(currentTime - seconds, 0);
-    if (audioRef) {
-      audioRef.currentTime = newTime;
-      set({ currentTime: newTime });
-    }
+  skipBackward: (seconds = 10) => {
+    const { audioRef } = get();
+    console.log("[AudioStore] skipBackward called", {
+      seconds,
+      audioRef: audioRef ? "exists" : "NULL ← bug here",
+      currentTime: audioRef?.currentTime,
+      duration: audioRef?.duration,
+    });
+    if (!audioRef) return;
+    const newTime = Math.max(audioRef.currentTime - seconds, 0);
+    console.log("[AudioStore] skipBackward → seeking to", newTime);
+    audioRef.currentTime = newTime;
+    set({ currentTime: newTime });
   },
 
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -107,14 +94,11 @@ export const useAudioStore = create<AudioState>((set, get) => ({
 
   setPlaybackRate: (rate) => {
     const { audioRef } = get();
-    if (audioRef) {
-      audioRef.playbackRate = rate;
-    }
+    if (audioRef) audioRef.playbackRate = rate;
     set({ playbackRate: rate });
   },
 }));
 
-// Helper: format seconds → "mm:ss" hoặc "h:mm:ss"
 export function formatTime(seconds: number): string {
   if (isNaN(seconds)) return "0:00";
   const h = Math.floor(seconds / 3600);

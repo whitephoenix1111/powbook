@@ -150,7 +150,7 @@ export const RECOMMENDED_AUDIOBOOKS: Book[] = [
     isFree: true,
     length: "18 hr 24 min",
     description: "A wildly original novel about food, adventure, and the unexpected power of human connection across cultural boundaries.",
-    audioUrl: "https://archive.org/download/alice_wonderland_librivox/awic_01_carroll_64kb.mp3",
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
   },
   {
     id: "7",
@@ -163,7 +163,7 @@ export const RECOMMENDED_AUDIOBOOKS: Book[] = [
     isFree: true,
     length: "2 hr 10 min",
     description: "A spellbinding and humorous portrait of the fictional sport of Quidditch — the complete history of the game, for Potterheads everywhere.",
-    audioUrl: "https://archive.org/download/alice_wonderland_librivox/awic_01_carroll_64kb.mp3",
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
   },
   {
     id: "8",
@@ -177,7 +177,7 @@ export const RECOMMENDED_AUDIOBOOKS: Book[] = [
     price: 14.99,
     length: "4 hr 38 min",
     description: "A portrait of the Jazz Age in all of its decadence — Jay Gatsby's obsessive pursuit of the past and the elusive green light across the water.",
-    audioUrl: "https://archive.org/download/alice_wonderland_librivox/awic_02_carroll_64kb.mp3",
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
   },
   {
     id: "9",
@@ -192,7 +192,7 @@ export const RECOMMENDED_AUDIOBOOKS: Book[] = [
     price: 19.99,
     length: "8 hr 18 min",
     description: "The boy who lived. Jim Dale's iconic narration brings Hogwarts to life in this unforgettable U.S. edition of the beloved series.",
-    audioUrl: "https://archive.org/download/alice_wonderland_librivox/awic_01_carroll_64kb.mp3",
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
   },
 ]
 
@@ -212,7 +212,7 @@ export const ACTIVE_BOOK: Book = {
   format: "E-Book + Audiobook",
   publisher: "Audible Verse, Inc.",
   released: "Apr 24, 2022",
-  audioUrl: "https://archive.org/download/alice_wonderland_librivox/awic_01_carroll_64kb.mp3",
+  audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
   description:
     "Die-hard Harry Potter audiobook fans will list the ways in which Dale differs from Fry. We love both of their performances, but some fans are firmly Team Dale or Team Fry. There's so much to love about Dale's interpretation in the U.S. edition of the audiobooks.",
   pages: [

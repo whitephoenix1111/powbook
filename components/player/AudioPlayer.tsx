@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useAudioStore, formatTime } from "@/lib/store/audioStore";
 import {
@@ -32,17 +32,52 @@ export default function AudioPlayer() {
     dismiss,
   } = useAudioStore();
 
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const playPromiseRef = useRef<Promise<void> | null>(null);
 
-  useEffect(() => {
-    setAudioRef(audioRef.current);
-    return () => setAudioRef(null);
+  // Callback ref — gọi đúng lúc <audio> element mount/unmount vào DOM
+  // Không phụ thuộc vào useEffect timing, luôn có ref thật khi element tồn tại
+  const audioCallbackRef = useCallback((el: HTMLAudioElement | null) => {
+    console.log("[AudioPlayer] audioCallbackRef →", el ? "mounted" : "unmounted");
+    setAudioRef(el);
   }, [setAudioRef]);
 
+  // Khi audioUrl thay đổi → load + play
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.playbackRate = playbackRate;
+    const el = useAudioStore.getState().audioRef;
+    if (!el || !audioUrl) return;
+    let cancelled = false;
+    el.load();
+    playPromiseRef.current = el.play().then(() => {
+      if (cancelled) el.pause();
+    }).catch(() => {
+      if (!cancelled) useAudioStore.getState().pause();
+    });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioUrl]);
+
+  // Sync isPlaying → element, đợi play promise để tránh race condition
+  useEffect(() => {
+    const el = useAudioStore.getState().audioRef;
+    if (!el) return;
+    if (isPlaying) {
+      playPromiseRef.current = el.play().catch(() => {
+        useAudioStore.getState().pause();
+      });
+    } else {
+      if (playPromiseRef.current) {
+        playPromiseRef.current.then(() => el.pause()).catch(() => {});
+      } else {
+        el.pause();
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying]);
+
+  // Sync playbackRate
+  useEffect(() => {
+    const el = useAudioStore.getState().audioRef;
+    if (el) el.playbackRate = playbackRate;
   }, [playbackRate]);
 
   if (!currentBook || !audioUrl) return null;
@@ -54,15 +89,20 @@ export default function AudioPlayer() {
     const idx = RATES.indexOf(playbackRate);
     setPlaybackRate(RATES[(idx + 1) % RATES.length]);
   };
+  const rateLabel = playbackRate === 1 ? "1x" : playbackRate === 1.25 ? "1.25x" : playbackRate === 1.5 ? "1.5x" : "2x";
 
   return (
     <div className="w-full bg-ink text-white px-5 py-3 border-t border-ink/20 flex-shrink-0">
 
       <audio
-        ref={audioRef}
+        ref={audioCallbackRef}
         src={audioUrl}
-        onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime ?? 0)}
-        onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
+        onTimeUpdate={(e) => setCurrentTime((e.target as HTMLAudioElement).currentTime)}
+        onLoadedMetadata={(e) => {
+          const el = e.target as HTMLAudioElement;
+          setDuration(el.duration);
+          el.playbackRate = playbackRate;
+        }}
         onEnded={() => useAudioStore.getState().pause()}
       />
 
@@ -71,12 +111,7 @@ export default function AudioPlayer() {
         {/* ── Cover + Info ── */}
         <div className="flex items-center gap-3 w-[220px] flex-shrink-0">
           <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 ring-1 ring-white/10">
-            <Image
-              src={currentBook.cover}
-              alt={currentBook.title}
-              fill
-              className="object-cover"
-            />
+            <Image src={currentBook.cover} alt={currentBook.title} fill className="object-cover" />
           </div>
           <div className="leading-tight min-w-0">
             <p className="font-display text-[13px] font-semibold text-white line-clamp-1">
@@ -97,20 +132,22 @@ export default function AudioPlayer() {
           {/* Speed */}
           <button
             onClick={nextRate}
+            title="Playback speed"
             className="font-sans text-[11px] font-semibold text-white/60 hover:text-white
-              w-9 h-8 rounded-md bg-white/5 hover:bg-white/10 transition-colors"
+              w-11 h-8 rounded-md bg-white/5 hover:bg-white/10 transition-colors"
           >
-            {playbackRate}x
+            {rateLabel}
           </button>
 
-          {/* Rewind 15s */}
+          {/* Rewind 10s */}
           <button
-            onClick={() => skipBackward(15)}
+            onClick={() => skipBackward(10)}
+            title="Rewind 10s"
             className="relative w-8 h-8 flex items-center justify-center rounded-md
               text-white/60 hover:text-white hover:bg-white/10 transition-colors"
           >
             <RotateCcw size={15} />
-            <span className="absolute text-[7px] font-bold bottom-1 font-sans">15</span>
+            <span className="absolute text-[7px] font-bold bottom-1 font-sans">10</span>
           </button>
 
           {/* Play / Pause */}
@@ -125,14 +162,15 @@ export default function AudioPlayer() {
             }
           </button>
 
-          {/* Forward 15s */}
+          {/* Forward 10s */}
           <button
-            onClick={() => skipForward(15)}
+            onClick={() => skipForward(10)}
+            title="Forward 10s"
             className="relative w-8 h-8 flex items-center justify-center rounded-md
               text-white/60 hover:text-white hover:bg-white/10 transition-colors"
           >
             <RotateCw size={15} />
-            <span className="absolute text-[7px] font-bold bottom-1 font-sans">15</span>
+            <span className="absolute text-[7px] font-bold bottom-1 font-sans">10</span>
           </button>
 
           {/* Skip next */}
@@ -150,25 +188,16 @@ export default function AudioPlayer() {
             {formatTime(currentTime)}
           </span>
 
-          {/* Track */}
           <div
             className="flex-1 h-1 bg-white/10 rounded-full cursor-pointer group relative"
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
-              const ratio = (e.clientX - rect.left) / rect.width;
-              seek(ratio * duration);
+              seek((e.clientX - rect.left) / rect.width * duration);
             }}
           >
-            {/* Fill */}
-            <div
-              className="h-full bg-brand rounded-full relative"
-              style={{ width: `${progress}%` }}
-            >
-              {/* Thumb */}
-              <span
-                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2
-                  w-2.5 h-2.5 rounded-full bg-white opacity-0 group-hover:opacity-100 transition-opacity"
-              />
+            <div className="h-full bg-brand rounded-full relative" style={{ width: `${progress}%` }}>
+              <span className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2
+                w-2.5 h-2.5 rounded-full bg-white opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
 
@@ -178,10 +207,8 @@ export default function AudioPlayer() {
         </div>
 
         {/* ── Queue ── */}
-        <button
-          className="w-8 h-8 flex items-center justify-center rounded-md
-            text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors flex-shrink-0"
-        >
+        <button className="w-8 h-8 flex items-center justify-center rounded-md
+          text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors flex-shrink-0">
           <ListMusic size={15} />
         </button>
 

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Star, Play, Headphones, Clock, BookOpen } from "lucide-react";
+import { Star, Play, Headphones, Clock, BookOpen, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLibraryStore } from "@/lib/store/libraryStore";
 import type { Book } from "@/lib/mockData";
@@ -43,7 +43,7 @@ export function HeroBentoCard({ book, onClick, isActive, className }: HeroBentoC
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/20" />
 
-      {/* Type badge */}
+      {/* Type badge — top left */}
       <div className="absolute top-4 left-4">
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand text-white text-[11px] font-sans font-bold uppercase tracking-widest">
           {isAudiobook && isEbook ? (
@@ -56,9 +56,21 @@ export function HeroBentoCard({ book, onClick, isActive, className }: HeroBentoC
         </span>
       </div>
 
-      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-        <span className="px-2.5 py-1 rounded-lg bg-white/15 backdrop-blur-sm text-white text-[11px] font-sans">
-          Featured
+      {/* Price badge — top right */}
+      <div className="absolute top-4 right-4">
+        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-sans font-bold backdrop-blur-sm
+          ${owned
+            ? "bg-emerald-500/90 text-white"
+            : book.isFree
+              ? "bg-emerald-500/90 text-white"
+              : "bg-ink/75 text-white"
+          }`}
+        >
+          {owned
+            ? <><Check size={10} strokeWidth={2.5} /> Owned</>
+            : book.isFree ? "FREE"
+            : `$${book.price?.toFixed(2)}`
+          }
         </span>
       </div>
 
@@ -85,7 +97,6 @@ export function HeroBentoCard({ book, onClick, isActive, className }: HeroBentoC
         </p>
 
         <div className="flex items-center gap-2">
-          {/* Play Sample — owned: play thật | chưa owned: mở panel */}
           {isAudiobook && (
             <button
               onClick={(e) => { e.stopPropagation(); if (!owned) onClick?.(); }}
@@ -96,7 +107,6 @@ export function HeroBentoCard({ book, onClick, isActive, className }: HeroBentoC
             </button>
           )}
 
-          {/* Read Now — owned: navigate | chưa owned: mở panel (button giả link) */}
           {isEbook && (
             owned ? (
               <Link
@@ -142,6 +152,9 @@ interface BookBentoCardProps {
 }
 
 export function BookBentoCard({ book, onClick, isActive, className }: BookBentoCardProps) {
+  const { isOwned } = useLibraryStore();
+  const owned = isOwned(book.id);
+
   return (
     <div
       onClick={onClick}
@@ -162,12 +175,30 @@ export function BookBentoCard({ book, onClick, isActive, className }: BookBentoC
         onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
       />
 
+      {/* Price badge — top right */}
+      <div className="absolute top-2 right-2 z-10">
+        <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[9px] font-sans font-bold backdrop-blur-sm
+          ${owned
+            ? "bg-emerald-500/90 text-white"
+            : book.isFree
+              ? "bg-emerald-500/90 text-white"
+              : "bg-ink/75 text-white"
+          }`}
+        >
+          {owned
+            ? <><Check size={8} strokeWidth={2.5} /> Owned</>
+            : book.isFree ? "FREE"
+            : `$${book.price?.toFixed(2)}`
+          }
+        </span>
+      </div>
+
       {/* Active dot */}
       {isActive && (
-        <div className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-brand z-10 shadow-sm" />
+        <div className="absolute top-2.5 left-2.5 w-2 h-2 rounded-full bg-brand z-10 shadow-sm" />
       )}
 
-      {/* Bottom gradient overlay — luôn hiện nhưng đậm hơn khi hover */}
+      {/* Bottom gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent
         opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
 
@@ -228,19 +259,35 @@ export function AudioBentoCard({ book, onClick, isActive, className }: AudioBent
           sizes="180px"
           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
         />
-        {/* Hard fade sang right panel */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-surface-card" />
       </div>
 
-      {/* Right: Info — full flex column, space-between */}
+      {/* Right: Info */}
       <div className="flex-1 px-5 py-4 flex flex-col justify-between min-w-0 bg-surface-card">
 
-        {/* Top: badge + title + author */}
+        {/* Top: badge + price badge + title + author */}
         <div className="space-y-1">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand/10 text-brand text-[10px] font-sans font-bold uppercase tracking-wider">
-            <Headphones size={8} strokeWidth={2.5} />
-            Audiobook
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand/10 text-brand text-[10px] font-sans font-bold uppercase tracking-wider">
+              <Headphones size={8} strokeWidth={2.5} />
+              Audiobook
+            </span>
+            {/* Price badge */}
+            <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-sans font-bold
+              ${owned
+                ? "bg-emerald-100 text-emerald-600"
+                : book.isFree
+                  ? "bg-emerald-100 text-emerald-600"
+                  : "bg-surface-sunken text-ink border border-warm-border"
+              }`}
+            >
+              {owned
+                ? <><Check size={9} strokeWidth={2.5} /> Owned</>
+                : book.isFree ? "FREE"
+                : `$${book.price?.toFixed(2)}`
+              }
+            </span>
+          </div>
           <h3 className="font-display text-[16px] font-bold text-ink leading-snug line-clamp-2 pt-0.5">
             {book.title}
           </h3>
@@ -250,7 +297,7 @@ export function AudioBentoCard({ book, onClick, isActive, className }: AudioBent
           </p>
         </div>
 
-        {/* Play Sample — owned: play thật | chưa owned: mở panel */}
+        {/* Play Sample button */}
         <button
           onClick={(e) => { e.stopPropagation(); if (!owned) onClick?.(); }}
           className="self-start flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-[12px] font-sans font-semibold

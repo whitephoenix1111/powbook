@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Bell, ChevronDown, LogOut, User, Settings } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useAuthStore } from "@/lib/store/authStore";
 
 interface NavbarProps {
@@ -15,8 +16,8 @@ export default function Navbar({ searchPlaceholder = "Title, author, host, or to
   const dropRef = useRef<HTMLDivElement>(null);
   const { currentUser, logout } = useAuthStore();
   const router = useRouter();
+  const isLoggedIn = !!currentUser;
 
-  /* Close dropdown khi click ngoài */
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
@@ -27,13 +28,8 @@ export default function Navbar({ searchPlaceholder = "Title, author, host, or to
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  /* Tên hiển thị — lấy phần trước @ của email */
-  const displayName = currentUser
-    ? currentUser.email.split("@")[0]
-    : "Guest";
-
-  /* Avatar seed từ email */
-  const avatarSrc = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(currentUser?.email ?? "guest")}&backgroundColor=b6e3f4`;
+  const displayName = currentUser?.email.split("@")[0] ?? "";
+  const avatarSrc = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(currentUser?.email ?? "")}&backgroundColor=b6e3f4`;
 
   function handleLogout() {
     setOpen(false);
@@ -55,68 +51,87 @@ export default function Navbar({ searchPlaceholder = "Title, author, host, or to
 
       <div className="flex-1" />
 
-      {/* User dropdown */}
-      <div className="relative" ref={dropRef}>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-surface-sunken transition-colors"
-        >
-          <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-warm-border bg-surface-sunken flex-shrink-0">
-            <Image src={avatarSrc} alt={displayName} fill className="object-cover" unoptimized />
-          </div>
-          <div className="text-left hidden sm:block">
-            <p className="font-sans text-[13px] font-semibold text-ink leading-tight capitalize">{displayName}</p>
-            <p className="font-sans text-[11px] text-ink-secondary leading-tight">Story Seeker</p>
-          </div>
-          <ChevronDown
-            size={13}
-            strokeWidth={2.5}
-            className={`text-ink-secondary transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-          />
-        </button>
+      {/* ── Logged OUT — Sign in / Create account ── */}
+      {!isLoggedIn && (
+        <div className="flex items-center gap-2">
+          <Link
+            href="/signin"
+            className="px-4 py-2 rounded-xl font-sans text-[13px] font-medium text-ink hover:bg-surface-sunken transition-colors no-underline"
+          >
+            Sign In
+          </Link>
+          <Link
+            href="/login"
+            className="px-4 py-2 rounded-xl bg-ink text-white font-sans text-[13px] font-semibold hover:bg-ink/85 transition-colors no-underline"
+          >
+            Create Account
+          </Link>
+        </div>
+      )}
 
-        {/* Dropdown panel */}
-        {open && (
-          <div className="absolute right-0 top-[calc(100%+8px)] w-[220px] bg-surface-card border border-warm-border rounded-2xl shadow-lg shadow-ink/10 overflow-hidden z-50">
-            {/* User info */}
-            <div className="px-4 py-3 border-b border-warm-border">
-              <p className="font-sans text-[12px] font-semibold text-ink capitalize">{displayName}</p>
-              <p className="font-sans text-[11px] text-ink-secondary truncate">{currentUser?.email ?? "-"}</p>
+      {/* ── Logged IN — User dropdown ── */}
+      {isLoggedIn && (
+        <div className="relative" ref={dropRef}>
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-surface-sunken transition-colors"
+          >
+            <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-warm-border bg-surface-sunken flex-shrink-0">
+              <Image src={avatarSrc} alt={displayName} fill className="object-cover" unoptimized />
             </div>
-
-            {/* Menu items */}
-            <div className="py-1.5">
-              <button
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 w-full px-4 py-2.5 font-sans text-[13px] text-ink hover:bg-surface-sunken transition-colors text-left"
-              >
-                <User size={14} strokeWidth={1.8} className="text-ink-secondary" />
-                Profile
-              </button>
-              <button
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 w-full px-4 py-2.5 font-sans text-[13px] text-ink hover:bg-surface-sunken transition-colors text-left"
-              >
-                <Settings size={14} strokeWidth={1.8} className="text-ink-secondary" />
-                Settings
-              </button>
+            <div className="text-left hidden sm:block">
+              <p className="font-sans text-[13px] font-semibold text-ink leading-tight capitalize">{displayName}</p>
+              <p className="font-sans text-[11px] text-ink-secondary leading-tight">Story Seeker</p>
             </div>
+            <ChevronDown
+              size={13}
+              strokeWidth={2.5}
+              className={`text-ink-secondary transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            />
+          </button>
 
-            <div className="h-px bg-warm-border" />
+          {/* Dropdown panel */}
+          {open && (
+            <div className="absolute right-0 top-[calc(100%+8px)] w-[220px] bg-surface-card border border-warm-border rounded-2xl shadow-lg shadow-ink/10 overflow-hidden z-50">
+              {/* User info */}
+              <div className="px-4 py-3 border-b border-warm-border">
+                <p className="font-sans text-[12px] font-semibold text-ink capitalize">{displayName}</p>
+                <p className="font-sans text-[11px] text-ink-secondary truncate">{currentUser?.email}</p>
+              </div>
 
-            {/* Logout */}
-            <div className="py-1.5">
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-3 w-full px-4 py-2.5 font-sans text-[13px] text-red-500 hover:bg-red-50 transition-colors text-left"
-              >
-                <LogOut size={14} strokeWidth={1.8} />
-                Sign out
-              </button>
+              {/* Menu items */}
+              <div className="py-1.5">
+                <button
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 w-full px-4 py-2.5 font-sans text-[13px] text-ink hover:bg-surface-sunken transition-colors text-left"
+                >
+                  <User size={14} strokeWidth={1.8} className="text-ink-secondary" />
+                  Profile
+                </button>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 w-full px-4 py-2.5 font-sans text-[13px] text-ink hover:bg-surface-sunken transition-colors text-left"
+                >
+                  <Settings size={14} strokeWidth={1.8} className="text-ink-secondary" />
+                  Settings
+                </button>
+              </div>
+
+              <div className="h-px bg-warm-border" />
+
+              <div className="py-1.5">
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 w-full px-4 py-2.5 font-sans text-[13px] text-red-500 hover:bg-red-50 transition-colors text-left"
+                >
+                  <LogOut size={14} strokeWidth={1.8} />
+                  Sign out
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Bell */}
       <button className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-surface-sunken transition-colors">

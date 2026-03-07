@@ -5,28 +5,21 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import AudioPlayer from "@/components/player/AudioPlayer";
 import BookSidePanel from "@/components/book/BookSidePanel";
+import Toaster from "@/components/ui/Toaster";
 import { useBookPanelStore } from "@/lib/store/bookPanelStore";
 
-export default function MainLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function MainLayout({ children }: { children: React.ReactNode }) {
   const selectedBook = useBookPanelStore((s) => s.selectedBook);
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface">
 
-      {/* ── Cột 1: Sidebar ── */}
       <Sidebar />
 
-      {/* ── Cột 2: flex-col wrapper (Navbar + content + AudioPlayer) ── */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
 
-        {/* ── Row: content area + SidePanel ── */}
         <div className="flex flex-1 min-w-0 overflow-hidden">
 
-          {/* ── Content column ── */}
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             <Navbar />
             <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden flex flex-col">
@@ -35,7 +28,6 @@ export default function MainLayout({
             </div>
           </div>
 
-          {/* ── Cột 3: BookSidePanel ── */}
           <div
             className={`flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden
               border-l border-warm-border bg-surface-raised
@@ -50,10 +42,13 @@ export default function MainLayout({
 
         </div>
 
-        {/* ── AudioPlayer — bottom của content column, full width ── */}
         <AudioPlayer />
 
       </div>
+
+      {/* Toast notifications — fixed, toàn app */}
+      <Toaster />
+
     </div>
   );
 }

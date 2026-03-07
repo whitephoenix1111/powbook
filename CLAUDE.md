@@ -326,27 +326,3 @@ Saved > Lists:
 | `components/layout/Sidebar.tsx` | Logout button |
 
 ---
-
-## 15. Trạng thái & Việc có thể làm tiếp
-
-### Đã hoàn chỉnh
-- Toàn bộ 6 routes, layout shell, AudioPlayer global
-- BookTextViewer, Bookmark (localStorage)
-- Freemium flow: Get Free / Buy / Wishlist / My Library
-- Lists flow: AddToListModal + Saved > Lists tab đầy đủ
-- Category page: card design đồng đều, sidebar fill height, **search bar** (title/author)
-- Home filter tabs: navigate sang /category với preset
-- Ownership guard: HeroBentoCard / AudioBentoCard không cho read/play khi chưa owned
-- **Auth system**: register / login / logout, persist localStorage
-- **Navbar**: user dropdown (avatar động, tên từ email, Sign out)
-- **Sidebar**: Logout button thật (gọi logout() + redirect /signin)
-- **Login page**: redesign, validation, password strength bar, no sidebar
-- **Signin page**: redesign đồng bộ, error states, no sidebar
-
-### Có thể làm tiếp
-- Dashboard: thêm badge giá + nút Buy vào BentoCard
-- BookSidePanel: sample audio/text preview trước khi owned
-- Saved > Titles: phân biệt ebook / audiobook bằng icon nhỏ
-- Rename list (edit tên sau khi tạo)
-- Toast notification toàn app thay flash text trong modal
-- Route guard: redirect về /signin nếu chưa đăng nhập

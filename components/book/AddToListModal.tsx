@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { X, Plus, Check, ListPlus, Trash2 } from "lucide-react";
+import { X, Plus, Check } from "lucide-react";
 import { useLibraryStore, type BookList } from "@/lib/store/libraryStore";
+import { toast } from "@/lib/store/toastStore";
 import type { Book } from "@/lib/mockData";
 
 interface AddToListModalProps {
@@ -14,15 +15,14 @@ export default function AddToListModal({ book, onClose }: AddToListModalProps) {
   const { lists, createList, addToList, removeFromList, isInList } = useLibraryStore();
   const [newListName, setNewListName] = useState("");
   const [showInput, setShowInput] = useState(false);
-  const [justAdded, setJustAdded] = useState<string | null>(null); // list id vừa thêm
 
   function handleToggle(list: BookList) {
     if (isInList(list.id, book.id)) {
       removeFromList(list.id, book.id);
+      toast.info(`Removed from "${list.name}"`);
     } else {
       addToList(list.id, book);
-      setJustAdded(list.id);
-      setTimeout(() => setJustAdded(null), 1200);
+      toast.success(`Added to "${list.name}"`);
     }
   }
 
@@ -31,20 +31,17 @@ export default function AddToListModal({ book, onClose }: AddToListModalProps) {
     if (!name) return;
     const id = createList(name);
     addToList(id, book);
-    setJustAdded(id);
-    setTimeout(() => setJustAdded(null), 1200);
+    toast.success(`Added to "${name}"`);
     setNewListName("");
     setShowInput(false);
   }
 
   return (
-    /* Backdrop */
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
       style={{ background: "rgba(0,0,0,0.45)" }}
       onClick={onClose}
     >
-      {/* Panel */}
       <div
         className="relative w-full max-w-sm mx-4 rounded-2xl bg-surface-card border border-warm-border shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -53,9 +50,7 @@ export default function AddToListModal({ book, onClose }: AddToListModalProps) {
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-warm-border">
           <div>
             <h2 className="font-display text-[16px] font-bold text-ink">Add to List</h2>
-            <p className="font-sans text-[12px] text-ink-secondary mt-0.5 line-clamp-1">
-              {book.title}
-            </p>
+            <p className="font-sans text-[12px] text-ink-secondary mt-0.5 line-clamp-1">{book.title}</p>
           </div>
           <button
             onClick={onClose}
@@ -74,7 +69,6 @@ export default function AddToListModal({ book, onClose }: AddToListModalProps) {
           )}
           {lists.map((list) => {
             const inList = isInList(list.id, book.id);
-            const flash  = justAdded === list.id;
             return (
               <button
                 key={list.id}
@@ -85,23 +79,17 @@ export default function AddToListModal({ book, onClose }: AddToListModalProps) {
                     : "hover:bg-surface-sunken border border-transparent"
                   }`}
               >
-                {/* Checkbox */}
                 <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all
                   ${inList ? "bg-brand border-brand" : "border-warm-border"}`}
                 >
                   {inList && <Check size={11} strokeWidth={3} className="text-white" />}
                 </span>
-
                 <div className="flex-1 min-w-0">
                   <p className="font-sans text-[13px] font-medium text-ink truncate">{list.name}</p>
                   <p className="font-sans text-[11px] text-ink-secondary">
                     {list.books.length} {list.books.length === 1 ? "book" : "books"}
                   </p>
                 </div>
-
-                {flash && (
-                  <span className="font-sans text-[11px] text-brand font-medium">Added!</span>
-                )}
               </button>
             );
           })}
@@ -117,7 +105,10 @@ export default function AddToListModal({ book, onClose }: AddToListModalProps) {
                 placeholder="List name…"
                 value={newListName}
                 onChange={(e) => setNewListName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") setShowInput(false); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreate();
+                  if (e.key === "Escape") { setShowInput(false); setNewListName(""); }
+                }}
                 maxLength={40}
                 className="flex-1 px-3 py-2 font-sans text-[13px] rounded-lg border border-warm-border bg-surface-raised text-ink placeholder:text-ink-secondary focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand"
               />
