@@ -274,12 +274,12 @@ export default function LoginPage() {
     setTimeout(() => { setSlide(i); setImgFaded(false); }, 300);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     setEmailTouched(true);
     setPasswordTouched(true);
     setServerError("");
     if (!isFormValid) return;
-    const result = register(email, password);
+    const result = await register(email, password);
     if (!result.ok) {
       setServerError(result.error ?? "Something went wrong.");
       return;

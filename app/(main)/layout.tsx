@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -7,9 +8,21 @@ import AudioPlayer from "@/components/player/AudioPlayer";
 import BookSidePanel from "@/components/book/BookSidePanel";
 import Toaster from "@/components/ui/Toaster";
 import { useBookPanelStore } from "@/lib/store/bookPanelStore";
+import { useAuthStore } from "@/lib/store/authStore";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const selectedBook = useBookPanelStore((s) => s.selectedBook);
+  const { hydrate } = useAuthStore();
+
+  // Restore session từ httpOnly cookie mỗi khi app load
+  // Đồng thời xoá sạch localStorage keys cũ (lv_auth, lv_library) từ version cũ dùng persist
+  useEffect(() => {
+    hydrate();
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("lv_auth");
+      localStorage.removeItem("lv_library");
+    }
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface">

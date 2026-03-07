@@ -31,9 +31,9 @@ export default function Navbar({ searchPlaceholder = "Title, author, host, or to
   const displayName = currentUser?.email.split("@")[0] ?? "";
   const avatarSrc = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(currentUser?.email ?? "")}&backgroundColor=b6e3f4`;
 
-  function handleLogout() {
+  async function handleLogout() {
     setOpen(false);
-    logout();
+    await logout();
     router.push("/signin");
   }
 

@@ -1,23 +1,41 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, notFound } from "next/navigation";
-import { getBookById } from "@/lib/mockData";
 import { useAudioStore } from "@/lib/store/audioStore";
 import BookTextViewer from "@/components/viewer/BookTextViewer";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import type { Book } from "@/lib/mockData";
 
 export default function BookPage() {
   const { id } = useParams<{ id: string }>();
-  const book = getBookById(id);
   const { setBook } = useAudioStore();
+
+  const [book, setBookData] = useState<Book | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/books?id=${id}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => setBookData(data ?? null))
+      .catch(() => setBookData(null))
+      .finally(() => setLoading(false));
+  }, [id]);
 
   useEffect(() => {
     if (book?.audioUrl) {
       setBook(book, book.audioUrl);
     }
   }, [book, setBook]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center h-full text-ink-secondary font-sans text-sm">
+        Loading…
+      </div>
+    );
+  }
 
   if (!book) return notFound();
 

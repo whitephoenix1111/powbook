@@ -1,79 +1,82 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { useLibraryStore } from "@/lib/store/libraryStore";
 
+// ── Types ────────────────────────────────────────────────────
 export interface User {
+  id:    string;
   email: string;
-  password: string;
-  createdAt: number;
 }
 
 interface AuthState {
-  users: User[];
   currentUser: User | null;
 
-  register:  (email: string, password: string) => { ok: boolean; error?: string };
-  login:     (email: string, password: string) => { ok: boolean; error?: string };
-  logout:    () => void;
+  /** Đăng ký tài khoản mới → gọi POST /api/auth/register */
+  register: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+
+  /** Đăng nhập → gọi POST /api/auth/login */
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+
+  /** Đăng xuất → gọi POST /api/auth/logout + clear state */
+  logout: () => Promise<void>;
+
+  /** Gọi GET /api/auth/me để restore session khi app mount */
+  hydrate: () => Promise<void>;
+
   isLoggedIn: () => boolean;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      users: [],
-      currentUser: null,
+// ── Store ────────────────────────────────────────────────────
+// Không dùng persist — session được giữ bằng httpOnly cookie phía server.
+// currentUser chỉ là client cache, hydrate() restore từ cookie mỗi khi load.
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  currentUser: null,
 
-      register: (email, password) => {
-        const existing = get().users.find(
-          (u) => u.email.toLowerCase() === email.toLowerCase()
-        );
-        if (existing) {
-          return { ok: false, error: "An account with this email already exists." };
-        }
-        const newUser: User = { email, password, createdAt: Date.now() };
-        set((s) => ({ users: [...s.users, newUser], currentUser: newUser }));
-        // Load library cho user mới (sẽ là empty data)
-        useLibraryStore.getState().setUser(email);
-        return { ok: true };
-      },
+  register: async (email, password) => {
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error };
 
-      login: (email, password) => {
-        const user = get().users.find(
-          (u) =>
-            u.email.toLowerCase() === email.toLowerCase() &&
-            u.password === password
-        );
-        if (!user) {
-          return { ok: false, error: "Incorrect email or password." };
-        }
-        set({ currentUser: user });
-        // Load library của user này
-        useLibraryStore.getState().setUser(email);
-        return { ok: true };
-      },
+    set({ currentUser: { id: data.id, email: data.email } });
+    useLibraryStore.getState().setUser(data.id);
+    return { ok: true };
+  },
 
-      logout: () => {
-        set({ currentUser: null });
-        // Xoá library khỏi active state
-        useLibraryStore.getState().clearUser();
-      },
+  login: async (email, password) => {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error };
 
-      isLoggedIn: () => get().currentUser !== null,
-    }),
-    {
-      name: "lv_auth",
-      partialize: (s) => ({ users: s.users, currentUser: s.currentUser }),
-      // Sau rehydrate → sync library cho currentUser nếu đang đăng nhập
-      onRehydrateStorage: () => (state) => {
-        if (!state) return;
-        if (state.currentUser) {
-          // Dùng setTimeout để đảm bảo libraryStore cũng đã rehydrate xong
-          setTimeout(() => {
-            useLibraryStore.getState().setUser(state.currentUser!.email);
-          }, 0);
-        }
-      },
+    set({ currentUser: { id: data.id, email: data.email } });
+    useLibraryStore.getState().setUser(data.id);
+    return { ok: true };
+  },
+
+  logout: async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    set({ currentUser: null });
+    useLibraryStore.getState().clearUser();
+  },
+
+  hydrate: async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (data.user) {
+        set({ currentUser: data.user });
+        useLibraryStore.getState().setUser(data.user.id);
+      }
+    } catch {
+      // Không làm gì nếu network lỗi — user vẫn ở trạng thái logged out
     }
-  )
-);
+  },
+
+  isLoggedIn: () => get().currentUser !== null,
+}));

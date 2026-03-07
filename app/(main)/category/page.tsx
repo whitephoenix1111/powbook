@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { BookOpen, Headphones, ChevronRight, Heart, Check, Search, X } from "lucide-react";
-import { ALL_BOOKS, ACTIVE_BOOK, type Book, type Genre } from "@/lib/mockData";
+import { type Book, type Genre } from "@/lib/mockData";
 import { useBookPanelStore } from "@/lib/store/bookPanelStore";
 import { useLibraryStore } from "@/lib/store/libraryStore";
 
@@ -20,11 +20,6 @@ const GENRE_TABS: { key: GenreTab; label: string }[] = [
   { key: "dark-thriller",      label: "Dark & Thriller" },
 ];
 
-/* ── Book pool ── */
-const ALL_POOL: Book[] = [ACTIVE_BOOK, ...ALL_BOOKS].filter(
-  (b, i, arr) => arr.findIndex((x) => x.id === b.id) === i
-);
-
 /* ────────────────────────────────────────────────
    Page
 ──────────────────────────────────────────────── */
@@ -35,7 +30,16 @@ export default function CategoryPage() {
   const [contentTab, setContentTab] = useState<ContentTab>(initialType);
   const [genreTab,   setGenreTab]   = useState<GenreTab>("All");
   const [query,      setQuery]      = useState("");
+  const [allPool,    setAllPool]    = useState<Book[]>([]);
   const { selectedBook, toggle }    = useBookPanelStore();
+
+  // Fetch catalog từ API khi mount
+  useEffect(() => {
+    fetch("/api/books")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: Book[]) => setAllPool(data))
+      .catch(() => {});
+  }, []);
 
   // Sync contentTab khi URL thay đổi — setState during render (React-recommended
   // pattern cho derived state từ props, tránh useEffect cascading renders)
@@ -50,7 +54,7 @@ export default function CategoryPage() {
   const { isOwned, isWishlisted, acquire, toggleWishlist } = useLibraryStore();
 
   /* Filter */
-  const byType = ALL_POOL.filter((b) =>
+  const byType = allPool.filter((b) =>
     contentTab === "E-Books" ? !!b.pages : !!b.audioUrl
   );
   const byGenre =

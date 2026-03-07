@@ -1,0 +1,217 @@
+[
+  {
+    "id": "1",
+    "title": "The Great Gatsby",
+    "author": "F. Scott Fitzgerald",
+    "cover": "https://covers.openlibrary.org/b/id/8432463-L.jpg",
+    "rating": 5,
+    "ratingCount": "2.1K",
+    "genres": ["fiction"],
+    "isFree": false,
+    "price": 9.99,
+    "format": "E-Book",
+    "publisher": "Scribner",
+    "released": "Apr 10, 1925",
+    "length": "180 pages",
+    "description": "A portrait of the Jazz Age in all of its decadence and excess — the mysterious Jay Gatsby and his obsessive pursuit of the American Dream.",
+    "pages": [
+      {
+        "pageNumber": 1,
+        "chapter": "Chapter 1",
+        "content": "In my younger and more vulnerable years my father gave me some advice that I've been turning over in my mind ever since. Whenever you feel like criticizing anyone, he told me, just remember that all the people in this world haven't had the advantages that you've had."
+      },
+      {
+        "pageNumber": 2,
+        "content": "He didn't say any more, but we've always been unusually communicative in a reserved way, and I understood that he meant a great deal more than that."
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "title": "One Hundred Years of Solitude",
+    "author": "Gabriel G. Márquez",
+    "cover": "https://covers.openlibrary.org/b/id/10519563-L.jpg",
+    "rating": 4,
+    "ratingCount": "3.4K",
+    "genres": ["fiction", "history"],
+    "isFree": false,
+    "price": 12.99,
+    "format": "E-Book",
+    "publisher": "Harper & Row",
+    "released": "May 30, 1967",
+    "length": "417 pages",
+    "description": "The Buendía family over seven generations in the mythical town of Macondo — a landmark of magical realism and one of the greatest novels of the 20th century.",
+    "pages": [
+      {
+        "pageNumber": 1,
+        "chapter": "Chapter 1",
+        "content": "Many years later, as he faced the firing squad, Colonel Aureliano Buendía was to remember that distant afternoon when his father took him to discover ice."
+      }
+    ]
+  },
+  {
+    "id": "3",
+    "title": "To Kill a Mockingbird",
+    "author": "Harper Lee",
+    "cover": "https://covers.openlibrary.org/b/id/8739161-L.jpg",
+    "rating": 5,
+    "ratingCount": "4.2K",
+    "genres": ["fiction", "dark-thriller"],
+    "isFree": false,
+    "price": 11.99,
+    "format": "E-Book",
+    "publisher": "J. B. Lippincott & Co.",
+    "released": "Jul 11, 1960",
+    "length": "281 pages",
+    "description": "Seen through the eyes of Scout Finch, this Pulitzer Prize-winning novel confronts racism and injustice in the American South with unflinching moral courage.",
+    "pages": [
+      {
+        "pageNumber": 1,
+        "chapter": "Part One",
+        "content": "When he was nearly thirteen, my brother Jem got his arm badly broken at the elbow. When it healed, and Jem's fears of never being able to play football were assuaged, he was seldom self-conscious about his injury."
+      }
+    ]
+  },
+  {
+    "id": "4",
+    "title": "Of Human Bondage",
+    "author": "William Somerset Maugham",
+    "cover": "https://covers.openlibrary.org/b/id/12818862-L.jpg",
+    "rating": 4,
+    "ratingCount": "1.8K",
+    "genres": ["fiction"],
+    "isFree": false,
+    "price": 8.99,
+    "format": "E-Book",
+    "publisher": "George H. Doran Company",
+    "released": "Aug 12, 1915",
+    "length": "648 pages",
+    "description": "Philip Carey's turbulent journey from orphaned childhood to hard-won self-understanding — Maugham's most personal and autobiographical masterpiece.",
+    "pages": [
+      {
+        "pageNumber": 1,
+        "chapter": "Chapter 1",
+        "content": "The day broke grey and dull. The clouds hung heavily, and there was a rawness in the air that suggested snow."
+      }
+    ]
+  },
+  {
+    "id": "5",
+    "title": "Breaking Dawn (The Twilight Saga #4)",
+    "author": "Stephenie Meyer",
+    "cover": "https://covers.openlibrary.org/b/id/8267032-L.jpg",
+    "rating": 4,
+    "ratingCount": "5.6K",
+    "genres": ["fiction", "dark-thriller"],
+    "isFree": false,
+    "price": 10.99,
+    "format": "E-Book",
+    "publisher": "Little, Brown and Company",
+    "released": "Aug 2, 2008",
+    "length": "756 pages",
+    "description": "The epic conclusion to the Twilight Saga — Bella faces the most important decision of her life as the world she knows changes forever.",
+    "pages": [
+      {
+        "pageNumber": 1,
+        "chapter": "Preface",
+        "content": "I'd had more than my fair share of near-death experiences; it wasn't something you ever really got used to."
+      }
+    ]
+  },
+  {
+    "id": "6",
+    "title": "My Year Abroad",
+    "author": "Chang-rae Lee",
+    "cover": "https://covers.openlibrary.org/b/id/12818856-L.jpg",
+    "rating": 4,
+    "ratingCount": "980",
+    "genres": ["fiction"],
+    "isFree": true,
+    "format": "Audiobook",
+    "publisher": "Riverhead Books",
+    "released": "Feb 23, 2021",
+    "length": "18 hr 24 min",
+    "description": "A wildly original novel about food, adventure, and the unexpected power of human connection across cultural boundaries.",
+    "audioUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+  },
+  {
+    "id": "7",
+    "title": "Quidditch Through the Ages",
+    "author": "J.K. Rowling",
+    "cover": "https://covers.openlibrary.org/b/id/8385449-L.jpg",
+    "rating": 5,
+    "ratingCount": "7.3K",
+    "genres": ["fiction", "history"],
+    "isFree": true,
+    "format": "Audiobook",
+    "publisher": "Arthur A. Levine Books",
+    "released": "Mar 1, 2001",
+    "length": "2 hr 10 min",
+    "description": "A spellbinding and humorous portrait of the fictional sport of Quidditch — the complete history of the game, for Potterheads everywhere.",
+    "audioUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+  },
+  {
+    "id": "8",
+    "title": "The Great Gatsby",
+    "author": "F. Scott Fitzgerald",
+    "cover": "https://covers.openlibrary.org/b/id/8432463-L.jpg",
+    "rating": 5,
+    "ratingCount": "2.1K",
+    "genres": ["fiction"],
+    "isFree": false,
+    "price": 14.99,
+    "format": "Audiobook",
+    "publisher": "Blackstone Audio",
+    "released": "Jan 1, 2007",
+    "length": "4 hr 38 min",
+    "description": "A portrait of the Jazz Age in all of its decadence — Jay Gatsby's obsessive pursuit of the past and the elusive green light across the water.",
+    "audioUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+  },
+  {
+    "id": "9",
+    "title": "Harry Potter and the Sorcerer's Stone",
+    "author": "J.K. Rowling",
+    "narrator": "Jim Dale",
+    "cover": "https://covers.openlibrary.org/b/id/10110415-L.jpg",
+    "rating": 5,
+    "ratingCount": "12K",
+    "genres": ["fiction"],
+    "isFree": false,
+    "price": 19.99,
+    "format": "Audiobook",
+    "publisher": "Listening Library",
+    "released": "Sep 8, 1999",
+    "length": "8 hr 18 min",
+    "description": "The boy who lived. Jim Dale's iconic narration brings Hogwarts to life in this unforgettable U.S. edition of the beloved series.",
+    "audioUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
+  },
+  {
+    "id": "10",
+    "title": "Harry Potter and the Sorcerer's Stone",
+    "author": "J.K. Rowling",
+    "narrator": "Jim Dale",
+    "cover": "https://covers.openlibrary.org/b/id/10110415-L.jpg",
+    "rating": 5,
+    "ratingCount": "1.5K",
+    "genres": ["fiction"],
+    "isFree": false,
+    "price": 24.99,
+    "format": "E-Book + Audiobook",
+    "publisher": "Audible Verse, Inc.",
+    "released": "Apr 24, 2022",
+    "length": "22 hr 56 min",
+    "description": "Die-hard Harry Potter audiobook fans will list the ways in which Dale differs from Fry. We love both of their performances, but some fans are firmly Team Dale or Team Fry.",
+    "audioUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    "pages": [
+      {
+        "pageNumber": 5,
+        "chapter": "Chapter 01:\nThe Ordinary World of the Dursleys",
+        "content": "The Dursleys are a well-to-do, status-conscious family living in Surrey, England. Mr. Dursley notices strange things on his way to work — people in cloaks, owls flying in daylight, whispers about someone called You-Know-Who. He dismisses it all and says nothing to his wife.\n\nThat night, Albus Dumbledore appears on their street. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old.\n\nLorem Ipsum comes from sections 1.10.32 and 1.10.33 of de Finibus Bonorum et Malorum by Cicero, written in 45 BC."
+      },
+      {
+        "pageNumber": 6,
+        "content": "Dumbledore meets Professor McGonagall, who has been watching the Dursley house all day in the form of a cat. They discuss the fall of Voldemort and the fate of the infant Harry Potter. A giant named Hagrid arrives on a flying motorcycle carrying the baby."
+      }
+    ]
+  }
+]

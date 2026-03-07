@@ -24,8 +24,8 @@ export default function Sidebar() {
   const router = useRouter();
   const { logout } = useAuthStore();
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     router.push("/signin");
   }
 

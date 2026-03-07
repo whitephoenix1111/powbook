@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { BookOpen, Headphones, ChevronRight, TrendingUp, ArrowRight, Bookmark, ChevronLeft } from "lucide-react";
@@ -15,12 +15,7 @@ import {
   QuoteBentoCard,
 } from "@/components/bento/BentoCard";
 
-import {
-  POPULAR_BOOKS,
-  RECOMMENDED_AUDIOBOOKS,
-  ACTIVE_BOOK,
-  type Book,
-} from "@/lib/mockData";
+import { type Book } from "@/lib/mockData";
 
 /* ────────────────────────────────────────────────
    Static data
@@ -55,6 +50,22 @@ export default function DashboardPage() {
   const router = useRouter();
   const { selectedBook, toggle } = useBookPanelStore();
   const currentUser = useAuthStore((s) => s.currentUser);
+
+  // ── Fetch catalog ──
+  const [ebooks,     setEbooks]     = useState<Book[]>([]);
+  const [audiobooks, setAudiobooks] = useState<Book[]>([]);
+  const [activeBook, setActiveBook] = useState<Book | null>(null);
+
+  useEffect(() => {
+    fetch("/api/books")
+      .then((r) => r.ok ? r.json() : [])
+      .then((all: Book[]) => {
+        setActiveBook(all.find((b) => b.id === "10") ?? null);
+        setEbooks(all.filter((b) => b.pages && !b.audioUrl));
+        setAudiobooks(all.filter((b) => b.audioUrl));
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSelect = (book: Book) => toggle(book);
   const isActive = (book: Book) => selectedBook?.id === book.id;
@@ -116,11 +127,13 @@ export default function DashboardPage() {
             BENTO GRID 1 — Featured + Stats
         ══════════════════════════════════════ */}
         <BentoGrid>
-          <HeroBentoCard
-            book={ACTIVE_BOOK}
-            onClick={() => handleSelect(ACTIVE_BOOK)}
-            isActive={isActive(ACTIVE_BOOK)}
-          />
+          {activeBook && (
+            <HeroBentoCard
+              book={activeBook}
+              onClick={() => handleSelect(activeBook)}
+              isActive={isActive(activeBook)}
+            />
+          )}
           {/* Stat: Books Read */}
           <div className="relative rounded-2xl overflow-hidden flex flex-col justify-between p-4 border border-warm-border"
             style={{ background: "#E8580A" }}
@@ -144,16 +157,20 @@ export default function DashboardPage() {
               <p className="font-sans text-[12px] text-ink-secondary mt-0.5">Hours Listened</p>
             </div>
           </div>
-          <BookBentoCard
-            book={POPULAR_BOOKS[0]}
-            onClick={() => handleSelect(POPULAR_BOOKS[0])}
-            isActive={isActive(POPULAR_BOOKS[0])}
-          />
-          <BookBentoCard
-            book={POPULAR_BOOKS[1]}
-            onClick={() => handleSelect(POPULAR_BOOKS[1])}
-            isActive={isActive(POPULAR_BOOKS[1])}
-          />
+          {ebooks[0] && (
+            <BookBentoCard
+              book={ebooks[0]}
+              onClick={() => handleSelect(ebooks[0])}
+              isActive={isActive(ebooks[0])}
+            />
+          )}
+          {ebooks[1] && (
+            <BookBentoCard
+              book={ebooks[1]}
+              onClick={() => handleSelect(ebooks[1])}
+              isActive={isActive(ebooks[1])}
+            />
+          )}
         </BentoGrid>
 
         {/* ══════════════════════════════════════
@@ -167,30 +184,38 @@ export default function DashboardPage() {
             </button>
           </div>
           <BentoGrid>
-            <AudioBentoCard
-              book={RECOMMENDED_AUDIOBOOKS[0]}
-              onClick={() => handleSelect(RECOMMENDED_AUDIOBOOKS[0])}
-              isActive={isActive(RECOMMENDED_AUDIOBOOKS[0])}
-            />
-            <BookBentoCard
-              book={POPULAR_BOOKS[2]}
-              onClick={() => handleSelect(POPULAR_BOOKS[2])}
-              isActive={isActive(POPULAR_BOOKS[2])}
-            />
-            <BookBentoCard
-              book={POPULAR_BOOKS[3]}
-              onClick={() => handleSelect(POPULAR_BOOKS[3])}
-              isActive={isActive(POPULAR_BOOKS[3])}
-            />
+            {audiobooks[0] && (
+              <AudioBentoCard
+                book={audiobooks[0]}
+                onClick={() => handleSelect(audiobooks[0])}
+                isActive={isActive(audiobooks[0])}
+              />
+            )}
+            {ebooks[2] && (
+              <BookBentoCard
+                book={ebooks[2]}
+                onClick={() => handleSelect(ebooks[2])}
+                isActive={isActive(ebooks[2])}
+              />
+            )}
+            {ebooks[3] && (
+              <BookBentoCard
+                book={ebooks[3]}
+                onClick={() => handleSelect(ebooks[3])}
+                isActive={isActive(ebooks[3])}
+              />
+            )}
             <QuoteBentoCard
               quote="A reader lives a thousand lives before he dies. The man who never reads lives only one."
               attribution="George R.R. Martin"
             />
-            <AudioBentoCard
-              book={RECOMMENDED_AUDIOBOOKS[1]}
-              onClick={() => handleSelect(RECOMMENDED_AUDIOBOOKS[1])}
-              isActive={isActive(RECOMMENDED_AUDIOBOOKS[1])}
-            />
+            {audiobooks[1] && (
+              <AudioBentoCard
+                book={audiobooks[1]}
+                onClick={() => handleSelect(audiobooks[1])}
+                isActive={isActive(audiobooks[1])}
+              />
+            )}
           </BentoGrid>
         </div>
 
@@ -330,12 +355,8 @@ export default function DashboardPage() {
 
             {/* Book cards — cover tall + info bên dưới */}
             {[
-              POPULAR_BOOKS[4],
-              POPULAR_BOOKS[0],
-              POPULAR_BOOKS[1],
-              POPULAR_BOOKS[2],
-              POPULAR_BOOKS[3],
-              ...RECOMMENDED_AUDIOBOOKS,
+              ...ebooks,
+              ...audiobooks,
             ].map((book) => (
               <div
                 key={book.id}

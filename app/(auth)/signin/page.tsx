@@ -209,12 +209,12 @@ export default function SignInPage() {
     setTimeout(() => { setSlide(i); setImgFaded(false); }, 300);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     setEmailTouched(true);
     setPasswordTouched(true);
     setServerError("");
     if (!isFormValid) return;
-    const result = login(email, password);
+    const result = await login(email, password);
     if (!result.ok) {
       setServerError(result.error ?? "Something went wrong.");
       return;

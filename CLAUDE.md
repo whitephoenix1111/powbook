@@ -2,14 +2,7 @@
 
 ## 1. Tổng quan dự án
 
-Nền tảng quản lý nội dung số (E-book và Audiobook) với giao diện Bento Grid phong cách Retro Editorial. Fresher Portfolio Project.
-
-**Business model: Freemium**
-- Sách Free (public domain / LibriVox) → nút "Get Free"
-- Sách Paid → nút "Buy · $X.XX"
-- Đã owned → nút "Read" / "Play" mới unlock
-- Wishlist → lưu sách chưa mua để xem sau
-- Lists → user tự tạo collection đặt tên tuỳ ý
+Nền tảng quản lý nội dung số (E-book và Audiobook) với giao diện Bento Grid phong cách Retro Editorial. Fresher Portfolio Project. **Business model: Freemium** — Free / Paid / Owned.
 
 ---
 
@@ -18,9 +11,11 @@ Nền tảng quản lý nội dung số (E-book và Audiobook) với giao diện
 | Layer | Công nghệ |
 |---|---|
 | Frontend | Next.js 15 (App Router), TypeScript, Tailwind CSS, Shadcn/ui |
-| State Management | Zustand — Audio Player + Library + Book Panel |
-| Audio | MP3 free từ LibriVox / archive.org |
-| Ảnh bìa | OpenLibrary CDN (free, không cần upload) |
+| State (client) | Zustand — Audio Player + Book Panel + Auth + Library (UI cache, không persist) |
+| Data layer | JSON files + Next.js API Routes (App Router) |
+| Auth token | JWT lưu httpOnly cookie — không dùng localStorage |
+| Audio | MP3 từ LibriVox / archive.org |
+| Ảnh bìa | OpenLibrary CDN |
 | Icons | Lucide React |
 
 ---
@@ -28,22 +23,10 @@ Nền tảng quản lý nội dung số (E-book và Audiobook) với giao diện
 ## 3. Kiến trúc Layout
 
 ```
-┌─────────────────────────────────────────────────┐
-│  app/(main)/layout.tsx  (render 1 lần duy nhất) │
-│                                                 │
-│  ┌──────────┐  ┌──────────────────────────────┐ │
-│  │ Sidebar  │  │ Navbar (top bar)              │ │
-│  │  72px    │  ├──────────────────────────────┤ │
-│  │  fixed   │  │ {children} — page content    │ │
-│  │          │  │  scroll độc lập              │ │
-│  └──────────┘  └──────────────────────────────┘ │
-│  AudioPlayer (fixed bottom, toàn app)            │
-└─────────────────────────────────────────────────┘
-
-app/(auth)/ — KHÔNG có layout → login/signin ẩn hoàn toàn shell
+app/(main)/layout.tsx  → Shell: Sidebar + Navbar + AudioPlayer (render 1 lần)
+app/(auth)/            → KHÔNG có shell (login/signin)
+AudioPlayer            → fixed bottom, Zustand audioStore
 ```
-
-**Nguyên tắc:** Mỗi page trong `(main)` chỉ trả về phần content bên trong slot `children`. Sidebar và Navbar không bị re-mount khi navigate.
 
 ---
 
@@ -51,278 +34,194 @@ app/(auth)/ — KHÔNG có layout → login/signin ẩn hoàn toàn shell
 
 ```
 app/
-├── (auth)/
-│   ├── login/page.tsx
-│   └── signin/page.tsx
-├── (main)/
-│   ├── layout.tsx             # Shell: Sidebar + Navbar + AudioPlayer
-│   ├── page.tsx               # Dashboard
-│   ├── category/page.tsx
-│   ├── saved/page.tsx
-│   └── book/[id]/page.tsx
-├── globals.css
-└── layout.tsx                 # Root layout: font, metadata
+├── (auth)/login/page.tsx
+├── (auth)/signin/page.tsx
+├── (main)/layout.tsx
+├── (main)/page.tsx
+├── (main)/category/page.tsx
+├── (main)/saved/page.tsx
+├── (main)/book/[id]/page.tsx
+└── api/
+    ├── auth/register/route.ts
+    ├── auth/login/route.ts
+    ├── auth/logout/route.ts
+    ├── auth/me/route.ts
+    ├── books/route.ts             # GET ?id= | ?ids= | (all)
+    ├── library/route.ts           # GET + POST owned/wishlist/lists
+    └── ratings/route.ts           # GET + POST ✓ done
 
-components/
-├── ui/                        # Shadcn
-├── layout/
-│   ├── Sidebar.tsx
-│   └── Navbar.tsx
-├── bento/
-│   ├── BentoGrid.tsx
-│   └── BentoCard.tsx
-├── book/
-│   ├── BookCard.tsx
-│   ├── BookSidePanel.tsx
-│   └── AddToListModal.tsx     # Modal chọn / tạo list mới
-├── player/
-│   └── AudioPlayer.tsx
-└── viewer/
-    └── BookTextViewer.tsx
+data/
+├── books.json                     # Book catalog — source of truth cho product data
+├── users.json                     # [{ id(UUID), email, passwordHash, createdAt }]
+├── library.json                   # [{ userId(FK→users.id), ownedBookIds[], wishlistIds[], lists[{id,name,bookIds[]}] }]
+└── ratings.json                   # { [bookId]: { baseRating, baseCount, votes } }
 
 lib/
-├── mockData.ts
+├── auth.ts                        # Server-only: hashPassword, verifyPassword, signJWT, verifyJWT
+├── mockData.ts                    # Book catalog — DEPRECATED, giữ lại cho type exports
 └── store/
-    ├── audioStore.ts
-    ├── bookPanelStore.ts
-    └── libraryStore.ts
+    ├── audioStore.ts              # Zustand — player state
+    ├── bookPanelStore.ts          # Zustand — selected book
+    ├── authStore.ts               # Zustand — currentUser { id, email } (client cache)
+    ├── libraryStore.ts            # Zustand — owned/wishlist/lists (client cache, sync từ API)
+    └── toastStore.ts
 ```
 
 ---
 
-## 5. Kiến trúc Category & Book Type
+## 5. Book Type & Genre
 
-### Content type — 2 loại duy nhất
-- **E-Books** — detect qua `book.pages`
-- **Audiobooks** — detect qua `book.audioUrl`
-
-> Podcasts & Comics đã bỏ hoàn toàn.
-
-### Sub-genre — 4 loại, multi-value
-- `history` / `fiction` / `science-technology` / `dark-thriller`
-
-### Book type chính thức
 ```ts
 type Genre = 'history' | 'fiction' | 'science-technology' | 'dark-thriller'
-
 type Book = {
-  id: string
-  title: string
-  author: string
-  cover: string
-  rating: number
-  ratingCount: string
-  genres: Genre[]
-
-  pages?: BookPage[]     // có → là ebook
-  audioUrl?: string      // có → là audiobook
-
-  // Pricing (Freemium)
-  isFree?: boolean       // true → badge "Free", nút "Get Free"
-  price?: number         // VD: 9.99 — undefined nếu isFree
-
-  // Metadata phụ
-  length?: string
-  narrator?: string
-  format?: string
-  publisher?: string
-  released?: string
-  description?: string
+  id: string; title: string; author: string; cover: string
+  rating: number; ratingCount: string; genres: Genre[]
+  pages?: BookPage[]   // có → ebook
+  audioUrl?: string    // có → audiobook
+  isFree?: boolean; price?: number
+  length?: string; narrator?: string; format?: string
+  publisher?: string; released?: string; description?: string
 }
 ```
 
+Book type vẫn import từ `lib/mockData.ts` (chỉ dùng type, không dùng data).
+Catalog data thực tế nằm ở `data/books.json`.
+
 ---
 
-## 6. Business Model — Freemium Flow
+## 6. Data Schema
 
-```
-BOOK CARD / SIDE PANEL
-├── isFree = true   →  [Get Free]       → acquire() → ownedBooks[]
-├── isFree = false  →  [Buy · $X.XX]    → acquire() → ownedBooks[]  (mock, no payment)
-└── isOwned = true  →  [✓ In Library]   → [Read] / [Play] unlock
-
-WISHLIST (♡ icon)
-├── Chưa owned → toggleWishlist() → wishlist[]
-└── Đã owned   → disabled
-
-LISTS (Add to List button trong SidePanel)
-├── Mở AddToListModal → chọn list có sẵn hoặc tạo mới
-├── Mỗi list có tên tự đặt, chứa nhiều Book
-└── Xem tại /saved > tab Lists
-
-Khi Buy/Get từ Wishlist → sách tự động rời wishlist, vào ownedBooks
+### `data/users.json`
+```json
+[
+  {
+    "id": "uuid-v4",
+    "email": "user@example.com",
+    "passwordHash": "salt:hash (scrypt)",
+    "createdAt": 1234567890
+  }
+]
 ```
 
-### Badge trên card
+### `data/library.json`
+```json
+[
+  {
+    "userId": "uuid-v4",
+    "ownedBookIds": ["1", "3"],
+    "wishlistIds": ["2"],
+    "lists": [
+      { "id": "list_123", "name": "Favorites", "bookIds": ["1"], "createdAt": 1234567890 }
+    ]
+  }
+]
+```
+> `userId` là FK trỏ vào `users[].id` — KHÔNG lưu email hay full Book object.
 
-| Trạng thái | Badge |
+### `data/books.json`
+Array of Book objects — source of truth. `library.json` chỉ lưu IDs, khi GET `/api/library` sẽ resolve IDs → Books từ file này.
+
+---
+
+## 7. Auth & Session ✓ Done
+
+```
+POST /api/auth/register → hash password (scrypt) → ghi users.json (với UUID) → set cookie
+POST /api/auth/login    → verify → set cookie: lv_session (JWT, httpOnly, 7d)
+POST /api/auth/logout   → clear cookie (maxAge=0)
+GET  /api/auth/me       → verify cookie → { user: { id, email } } | { user: null }
+```
+
+JWT payload: `{ userId, email, iat, exp }` — không lưu password.
+Client: `authStore` giữ `currentUser: { id, email }`, hydrate từ `/api/auth/me` khi layout mount.
+`localStorage["lv_auth"]` đã bị xoá (cleanup trong layout.tsx useEffect).
+
+---
+
+## 8. Library ✓ Done
+
+```
+GET  /api/library        → verify cookie → lấy userId → find record trong library.json → resolve IDs → trả Book[]
+POST /api/library        → { action, payload: { bookId?, listId?, name? } }
+```
+
+Actions: `acquire` | `toggleWishlist` | `removeWishlist` | `createList` | `renameList` | `deleteList` | `addToList` | `removeFromList`
+
+`libraryStore` là **client cache** — optimistic update trước, gọi API sau, rollback nếu lỗi.
+`localStorage["lv_library"]` đã bị xoá.
+
+---
+
+## 9. Books API ✓ Done
+
+```
+GET /api/books           → toàn bộ catalog
+GET /api/books?id=1      → 1 book
+GET /api/books?ids=1,2,3 → nhiều books
+```
+
+---
+
+## 10. Ratings ✓ Done
+
+`data/ratings.json` + `app/api/ratings/route.ts`
+- GET: trả về effective rating (weighted average base + user votes)
+- POST `{ bookId, email, stars }`: upsert vote, tính lại ngay
+- Chỉ user đã owned mới rate được (guard ở client)
+- `StarDisplay` (partial fill SVG) + `StarInput` (interactive, hover label)
+
+---
+
+## 11. Business Model — Freemium Flow
+
+```
+isFree = true  → [Get Free]    → acquire() → ownedBooks
+isFree = false → [Buy · $X.XX] → acquire() → ownedBooks  (mock, no payment)
+isOwned = true → [✓ In Library] → [Read] / [Play] unlock
+Wishlist: chỉ khi chưa owned. Owned → tự rời wishlist.
+```
+
+Badge: Free=emerald | $X.XX=warm-border | Owned=emerald nền.
+
+---
+
+## 12. Routes & Filter Logic
+
+| Route | Tính năng |
 |---|---|
-| Free, chưa owned | `Free` — viền xanh emerald |
-| Paid, chưa owned | `$X.XX` — viền warm-border |
-| Đã owned | `✓ Owned` — nền emerald |
+| `/` | Bento Grid, tabs All/E-Books/Audiobooks, SidePanel |
+| `/category` | Filter type + genre, badge giá |
+| `/saved` | Tabs: Titles + Wishlist + Lists (active); Following/Notebook/History UI-only |
+| `/book/[id]` | Reader 2 cột, text size CSS var, bookmark localStorage |
+
+Filter: E-Books=`b.pages` / Audiobooks=`b.audioUrl` / Genre=`b.genres.includes()` — chain type trước genre sau.
 
 ---
 
-## 7. State Management
+## 13. Quyết định kỹ thuật
 
-### `libraryStore` (Zustand)
-```ts
-ownedBooks: Book[]          // Đã Get Free / Buy → hiện ở Saved > Titles
-wishlist:   Book[]          // Đã ♡ → hiện ở Saved > Wishlist
-lists:      BookList[]      // User-created collections → hiện ở Saved > Lists
-
-interface BookList {
-  id: string
-  name: string
-  books: Book[]
-  createdAt: number
-}
-
-isOwned(id): boolean
-isWishlisted(id): boolean
-acquire(book): void           // Get Free hoặc Buy — mock success
-toggleWishlist(book): void    // Guard: không cho wishlist nếu đã owned
-removeWishlist(id): void
-createList(name): string      // Tạo list mới → trả về id
-deleteList(listId): void
-addToList(listId, book): void
-removeFromList(listId, bookId): void
-isInList(listId, bookId): boolean
-getListsForBook(bookId): BookList[]
-```
-
-### `audioStore` (Zustand)
-- Nguồn sự thật duy nhất cho trạng thái audio
-- Persist xuyên navigate (render trong layout)
-
-### `bookPanelStore` (Zustand)
-- `selectedBook` — sách đang mở SidePanel
-- `toggle(book)` — mở nếu khác, đóng nếu cùng
-
----
-
-## 8. Routes & Tính năng
-
-| Route | Trang | Tính năng chính |
-|---|---|---|
-| `/` | Dashboard | Bento Grid, filter tabs (All / E-Books / Audiobooks), BookSidePanel slide-in |
-| `/category` | Browse by Category | Filter 2 chiều: content type + genre, badge giá, nút Get/Buy, Wishlist ♡ |
-| `/saved` | My Library | Tab Titles + Wishlist (active) + Lists (active), search, Buy từ Wishlist |
-| `/book/[id]` | Book Reader | BookTextViewer 2 cột, text size (CSS var), bookmark (localStorage) |
-| `/login` | Create an account | — |
-| `/signin` | Sign in | — |
-
-**Sidebar navigation:** Home / Category / Saved / Settings / Support
-
----
-
-## 9. Filter Logic
-
-| Trang | Filter chiều 1 | Filter chiều 2 |
-|---|---|---|
-| Dashboard | Tabs: All / E-Books / Audiobooks | — |
-| Category | Sidebar: E-Books / Audiobooks | Sidebar: All / History / Fiction / Sci & Tech / Dark & Thriller |
-| Saved | Tabs: Titles / Wishlist / Lists / Following / Notebook / History | Search client-side (Titles & Wishlist) |
-
-```ts
-// E-Books:    books.filter(b => b.pages)
-// Audiobooks: books.filter(b => b.audioUrl)
-// Genre:      books.filter(b => b.genres.includes(selectedGenre))
-// Chain:      type filter trước, genre sau
-```
-
----
-
-## 10. Navigation Flow
-
-- Dashboard → click tab "E-Books" / "Audiobooks" → navigate `/category?type=E-Books` (hoặc Audiobooks)
-- Dashboard → click "All" → không navigate, giữ nguyên home
-- Category page → đọc `?type=` query param → pre-select format tab tương ứng
-- Dashboard → click sách → `BookSidePanel` slide-in (không navigate)
-- BookSidePanel → `Buy / Get Free` → `acquire()` → nút đổi thành `Read / Play`
-- BookSidePanel → `Read` (chỉ hiện sau owned) → navigate `/book/[id]`
-- BookSidePanel → `Play` (chỉ hiện sau owned) → set Zustand audioStore
-- BookSidePanel → `Add to List` → mở `AddToListModal`
-- AddToListModal → toggle list có sẵn hoặc tạo list mới → lưu vào `libraryStore.lists`
-- Category → click card → `BookSidePanel` slide-in
-- Saved > Wishlist → `Buy / Get Free` → chuyển sang Titles tab
-- Saved > Lists → click list → xem sách bên trong (detail view)
-
-### HeroBentoCard / AudioBentoCard — ownership guard
-- **Owned** → `Read Now` navigate thật / `Play Sample` play audio thật
-- **Chưa owned** → cả hai gọi `onClick()` → mở SidePanel (không cho access nội dung)
-
----
-
-## 11. Quyết định kỹ thuật
-
-| Khâu | Quyết định | Ghi chú |
-|---|---|---|
-| Nội dung sách | Mock text — `BookPage[]` | — |
-| Audio | Zustand + MP3 LibriVox | play/pause/seek/speed/skip ±15s |
-| Ảnh bìa | OpenLibrary CDN | — |
-| Bookmark | `localStorage` | key: `bookmark_${id}` |
-| Text size | CSS variable thật | `--reader-font-size` |
-| Payment | Mock — acquire() thành công ngay | Không cần backend |
-| Library state | Zustand `libraryStore` | Không persist — reset khi reload |
-| Lists state | Zustand `libraryStore.lists` | Không persist — reset khi reload |
-| Read / Play | Chỉ unlock sau khi owned | UX e-commerce chuẩn |
-| Tabs ở /saved | Titles + Wishlist + Lists active | Following / Notebook / History UI only |
-| Category card | `aspect-[2/3]` cover + flex-1 info | Đồng đều, button Buy luôn cùng hàng |
-| Category sidebar | `self-stretch` thay sticky | Fill đủ chiều cao, không hở chân |
-| Filter tabs home | "E-Books"/"Audiobooks" → navigate `/category?type=` | "All" giữ nguyên home |
-
----
-
-## 12. Pricing Data (Mock)
-
-| Sách | Giá |
+| Khâu | Quyết định |
 |---|---|
-| My Year Abroad | Free (LibriVox) |
-| Quidditch Through the Ages | Free (LibriVox) |
-| The Great Gatsby (ebook) | $9.99 |
-| One Hundred Years of Solitude | $12.99 |
-| To Kill a Mockingbird | $11.99 |
-| Of Human Bondage | $8.99 |
-| Breaking Dawn | $10.99 |
-| The Great Gatsby (audiobook) | $14.99 |
-| Harry Potter (audiobook id:9) | $19.99 |
-| Harry Potter ACTIVE_BOOK | $24.99 |
+| Book catalog | `data/books.json` — source of truth |
+| `mockData.ts` | Giữ lại CHỈ để export `Book`, `BookPage`, `Genre` types |
+| Auth | scrypt (Node built-in crypto) + JWT httpOnly cookie |
+| Library storage | `userId` FK, chỉ lưu IDs — resolve sang Book khi GET |
+| Ratings | JSON file + API ✓ done |
+| Audio player | Zustand `audioStore` — persist xuyên navigate |
+| Bookmark | `localStorage` key: `bookmark_${id}` |
+| Payment | Mock — `acquire()` thành công ngay |
+| Greeting home | Theo giờ thực + tên từ email nếu đã login |
 
 ---
 
-## 13. AddToListModal — UX Detail
+## 14. Pricing Data
 
-```
-Mở khi: click "Add to List" trong BookSidePanel
-Đóng khi: click backdrop hoặc nút X
-
-Nội dung:
-- Header: "Add to List" + tên sách
-- List items: checkbox toggle (add/remove), tên list, số sách
-- Flash "Added!" 1.2s khi add thành công
-- Input tạo list mới: Enter để confirm, Escape để cancel
-- Nút "Create new list" dạng dashed border
-
-Saved > Lists:
-- Index view: grid các lists, mini cover stack (3 bìa xếp chồng)
-- Detail view: click list → xem sách, nút xoá từng sách, nút xoá cả list
-- Back to Lists button
-```
+Free: My Year Abroad (id:6), Quidditch Through the Ages (id:7)
+Paid: Gatsby ebook $9.99 (id:1) | 100 Years $12.99 (id:2) | Mockingbird $11.99 (id:3) | Of Human Bondage $8.99 (id:4) | Breaking Dawn $10.99 (id:5) | Gatsby audio $14.99 (id:8) | HP audio $19.99 (id:9) | HP E+Audio $24.99 (id:10)
 
 ---
 
-## 14. Auth System
+## 15. TODO — Còn lại
 
-> Chi tiết đầy đủ xem `CLAUDE-AUTH.md`
-
-| File | Vai trò |
-|---|---|
-| `lib/store/authStore.ts` | Zustand + persist → `localStorage["lv_auth"]` |
-| `lib/store/libraryStore.ts` | Đã thêm persist → `localStorage["lv_library"]` |
-| `app/(auth)/login/page.tsx` | Register flow hoàn chỉnh |
-| `app/(auth)/signin/page.tsx` | Login flow hoàn chỉnh |
-| `components/layout/Navbar.tsx` | User dropdown + logout |
-| `components/layout/Sidebar.tsx` | Logout button |
-
----
+- [ ] `mockData.ts` — xoá data constants (POPULAR_BOOKS, RECOMMENDED_AUDIOBOOKS, ACTIVE_BOOK, ALL_BOOKS, getBookById), chỉ giữ type exports. Các component đang dùng data này cần chuyển sang fetch `/api/books`
+- [ ] Route guard — middleware hoặc `useEffect` redirect `/signin` nếu `!currentUser` trên các trang protected
