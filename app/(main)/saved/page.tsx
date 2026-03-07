@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from "react";
 import Image from "next/image";
-import { Search, BookOpen, Download, Heart, ShoppingCart, Check } from "lucide-react";
+import { Search, BookOpen, Download, Heart, ShoppingCart, Check, ListPlus, ChevronRight, Trash2, ArrowLeft } from "lucide-react";
 import { type Book } from "@/lib/mockData";
 import { useBookPanelStore } from "@/lib/store/bookPanelStore";
-import { useLibraryStore } from "@/lib/store/libraryStore";
+import { useLibraryStore, type BookList } from "@/lib/store/libraryStore";
 
 const TABS = ["Titles", "Wishlist", "Following", "Lists", "Notebook", "History"] as const;
 type Tab = (typeof TABS)[number];
@@ -13,8 +13,9 @@ type Tab = (typeof TABS)[number];
 export default function SavedPage() {
   const [activeTab, setActiveTab] = useState<Tab>("Titles");
   const [query, setQuery] = useState("");
+  const [openList, setOpenList] = useState<BookList | null>(null);
   const { toggle, selectedBook } = useBookPanelStore();
-  const { ownedBooks, wishlist, acquire, removeWishlist, toggleWishlist, isOwned, isWishlisted } = useLibraryStore();
+  const { ownedBooks, wishlist, lists, acquire, removeWishlist, toggleWishlist, isOwned, isWishlisted, deleteList, removeFromList } = useLibraryStore();
 
   const activeList: Book[] = activeTab === "Titles" ? ownedBooks : activeTab === "Wishlist" ? wishlist : [];
 
@@ -35,7 +36,7 @@ export default function SavedPage() {
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-warm-border">
         {TABS.map((tab) => {
-          const count = tab === "Titles" ? ownedBooks.length : tab === "Wishlist" ? wishlist.length : null;
+          const count = tab === "Titles" ? ownedBooks.length : tab === "Wishlist" ? wishlist.length : tab === "Lists" ? lists.length : null;
           return (
             <button
               key={tab}
@@ -99,6 +100,111 @@ export default function SavedPage() {
             <EmptyState tab={activeTab} hasQuery={!!query} />
           )}
         </>
+      ) : activeTab === "Lists" ? (
+        /* ── Lists tab ── */
+        openList ? (
+          /* Detail view: sách trong 1 list */
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setOpenList(null)}
+                className="flex items-center gap-1.5 font-sans text-[13px] text-ink-secondary hover:text-brand transition-colors"
+              >
+                <ArrowLeft size={14} strokeWidth={2} /> Back to Lists
+              </button>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display text-[18px] font-bold text-ink">{openList.name}</h2>
+                <p className="font-sans text-[12px] text-ink-secondary">
+                  {openList.books.length} {openList.books.length === 1 ? "book" : "books"}
+                </p>
+              </div>
+              <button
+                onClick={() => { deleteList(openList.id); setOpenList(null); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 hover:text-red-600 font-sans text-[12px] transition-colors"
+              >
+                <Trash2 size={13} strokeWidth={2} /> Delete list
+              </button>
+            </div>
+            {openList.books.length === 0 ? (
+              <div className="flex flex-col items-center py-16 gap-3 text-ink-secondary">
+                <ListPlus size={36} strokeWidth={1.4} />
+                <p className="font-sans text-sm">No books in this list yet.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {openList.books.map((book) => (
+                  <ListBookCard
+                    key={book.id}
+                    book={book}
+                    isActive={selectedBook?.id === book.id}
+                    onSelect={() => toggle(book)}
+                    onRemove={() => {
+                      removeFromList(openList.id, book.id);
+                      setOpenList((prev) =>
+                        prev ? { ...prev, books: prev.books.filter((b) => b.id !== book.id) } : null
+                      );
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Index view: tất cả lists */
+          <div className="space-y-3">
+            {lists.length === 0 ? (
+              <div className="flex flex-col items-center py-20 gap-3 text-ink-secondary">
+                <ListPlus size={40} strokeWidth={1.4} />
+                <p className="font-sans text-sm text-center max-w-xs">
+                  No lists yet. Open any book and tap "Add to List" to create one.
+                </p>
+              </div>
+            ) : (
+              lists.map((list) => (
+                <button
+                  key={list.id}
+                  onClick={() => setOpenList(list)}
+                  className="w-full flex items-center gap-4 p-4 rounded-2xl border border-warm-border bg-surface-card hover:border-brand/40 hover:shadow-md transition-all text-left"
+                >
+                  {/* Mini covers stack */}
+                  <div className="relative w-14 h-14 flex-shrink-0">
+                    {list.books.slice(0, 3).map((b, i) => (
+                      <div
+                        key={b.id}
+                        className="absolute rounded-md overflow-hidden border border-warm-border bg-surface-sunken"
+                        style={{
+                          width: 36, height: 48,
+                          left: i * 8, top: i * -4 + 8,
+                          zIndex: i,
+                          boxShadow: "0 1px 4px rgba(0,0,0,0.12)"
+                        }}
+                      >
+                        <Image src={b.cover} alt={b.title} fill className="object-cover" sizes="36px"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      </div>
+                    ))}
+                    {list.books.length === 0 && (
+                      <div className="w-14 h-14 rounded-xl bg-surface-sunken border border-warm-border flex items-center justify-center">
+                        <ListPlus size={18} strokeWidth={1.5} className="text-ink-secondary/40" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display text-[15px] font-bold text-ink">{list.name}</p>
+                    <p className="font-sans text-[12px] text-ink-secondary mt-0.5">
+                      {list.books.length} {list.books.length === 1 ? "book" : "books"}
+                    </p>
+                  </div>
+
+                  <ChevronRight size={16} strokeWidth={2} className="text-ink-secondary/50 flex-shrink-0" />
+                </button>
+              ))
+            )}
+          </div>
+        )
       ) : (
         /* Other tabs — coming soon */
         <div className="flex flex-col items-center justify-center py-24 gap-3 text-ink-secondary">
@@ -175,6 +281,47 @@ function OwnedBookCard({
             title="Download"
           >
             <Download size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── List Book Card ── */
+function ListBookCard({
+  book, isActive, onSelect, onRemove,
+}: {
+  book: Book; isActive: boolean; onSelect: () => void; onRemove: () => void;
+}) {
+  return (
+    <div
+      onClick={onSelect}
+      className={`flex gap-3 rounded-2xl border bg-surface-card p-4 cursor-pointer transition-all
+        ${isActive ? "border-brand border-2 shadow-md shadow-brand/15" : "border-warm-border hover:shadow-md hover:border-brand/40"}`}
+    >
+      <div className="relative flex-shrink-0 w-[72px] h-[96px] rounded-lg overflow-hidden border border-warm-border bg-surface-sunken">
+        <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="72px"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+      </div>
+      <div className="flex flex-col flex-1 min-w-0 gap-1">
+        <h3 className={`font-display text-[14px] font-bold leading-tight line-clamp-2 ${ isActive ? "text-brand" : "text-ink"}`}>
+          {book.title}
+        </h3>
+        <p className="font-sans text-[12px] text-ink-secondary">{book.author}</p>
+        {book.description && (
+          <p className="font-sans text-[11px] text-ink-secondary leading-relaxed line-clamp-2 mt-0.5">{book.description}</p>
+        )}
+        <div className="flex items-center gap-2 mt-auto pt-2" onClick={(e) => e.stopPropagation()}>
+          <span className="flex-1 py-1.5 rounded-lg bg-brand/10 text-brand font-sans text-[12px] font-medium text-center cursor-pointer hover:bg-brand/15 transition-colors">
+            View Details
+          </span>
+          <button
+            onClick={onRemove}
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-warm-border text-ink-secondary hover:border-red-200 hover:bg-red-50 hover:text-red-500 transition-colors"
+            title="Remove from list"
+          >
+            <Trash2 size={14} strokeWidth={1.8} />
           </button>
         </div>
       </div>

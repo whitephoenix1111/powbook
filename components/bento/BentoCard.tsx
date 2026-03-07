@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Star, Play, Headphones, Clock, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLibraryStore } from "@/lib/store/libraryStore";
 import type { Book } from "@/lib/mockData";
 
 /* =========================================================
@@ -20,6 +21,8 @@ interface HeroBentoCardProps {
 export function HeroBentoCard({ book, onClick, isActive, className }: HeroBentoCardProps) {
   const isAudiobook = !!book.audioUrl;
   const isEbook     = !!book.pages;
+  const { isOwned } = useLibraryStore();
+  const owned = isOwned(book.id);
 
   return (
     <div
@@ -82,25 +85,39 @@ export function HeroBentoCard({ book, onClick, isActive, className }: HeroBentoC
         </p>
 
         <div className="flex items-center gap-2">
+          {/* Play Sample — owned: play thật | chưa owned: mở panel */}
           {isAudiobook && (
             <button
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); if (!owned) onClick?.(); }}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-[13px] font-sans font-semibold hover:bg-brand-hover transition-colors"
             >
               <Play size={13} fill="white" strokeWidth={0} />
               Play Sample
             </button>
           )}
+
+          {/* Read Now — owned: navigate | chưa owned: mở panel (button giả link) */}
           {isEbook && (
-            <Link
-              href={`/book/${book.id}`}
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/15 backdrop-blur-sm text-white text-[13px] font-sans font-medium hover:bg-white/25 transition-colors no-underline"
-            >
-              <BookOpen size={13} strokeWidth={1.8} />
-              Read Now
-            </Link>
+            owned ? (
+              <Link
+                href={`/book/${book.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/15 backdrop-blur-sm text-white text-[13px] font-sans font-medium hover:bg-white/25 transition-colors no-underline"
+              >
+                <BookOpen size={13} strokeWidth={1.8} />
+                Read Now
+              </Link>
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/15 backdrop-blur-sm text-white text-[13px] font-sans font-medium hover:bg-white/25 transition-colors"
+              >
+                <BookOpen size={13} strokeWidth={1.8} />
+                Read Now
+              </button>
+            )
           )}
+
           {book.length && (
             <span className="ml-auto flex items-center gap-1 text-white/60 text-[12px] font-sans">
               <Clock size={12} strokeWidth={1.8} />
@@ -188,6 +205,9 @@ interface AudioBentoCardProps {
 }
 
 export function AudioBentoCard({ book, onClick, isActive, className }: AudioBentoCardProps) {
+  const { isOwned, acquire } = useLibraryStore();
+  const owned = isOwned(book.id);
+
   return (
     <div
       onClick={onClick}
@@ -230,9 +250,9 @@ export function AudioBentoCard({ book, onClick, isActive, className }: AudioBent
           </p>
         </div>
 
-        {/* Mid: Play button */}
+        {/* Play Sample — owned: play thật | chưa owned: mở panel */}
         <button
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); if (!owned) onClick?.(); }}
           className="self-start flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-[12px] font-sans font-semibold
             hover:opacity-90 transition-opacity"
         >

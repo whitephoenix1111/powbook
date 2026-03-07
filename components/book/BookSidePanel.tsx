@@ -3,6 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Download, Heart, ListPlus, Play, BookOpen, Star, X, Check, ShoppingCart } from "lucide-react";
+import AddToListModal from "@/components/book/AddToListModal";
+import { useState } from "react";
 import { useAudioStore } from "@/lib/store/audioStore";
 import { useBookPanelStore } from "@/lib/store/bookPanelStore";
 import { useLibraryStore } from "@/lib/store/libraryStore";
@@ -19,6 +21,7 @@ export default function BookSidePanel({ book }: BookSidePanelProps) {
 
   const owned      = isOwned(book.id);
   const wishlisted = isWishlisted(book.id);
+  const [showListModal, setShowListModal] = useState(false);
   const isEbook     = !!book.pages;
   const isAudiobook = !!book.audioUrl;
   const priceLabel  = book.isFree ? "Get Free" : `Buy · $${book.price?.toFixed(2)}`;
@@ -28,7 +31,7 @@ export default function BookSidePanel({ book }: BookSidePanelProps) {
     setBook(book, book.audioUrl);
   }
 
-  return (
+  return (<>
     <aside className="flex flex-col w-[280px] min-w-[280px] flex-shrink-0 bg-surface-raised">
 
       {/* ── Book header ── */}
@@ -144,6 +147,7 @@ export default function BookSidePanel({ book }: BookSidePanelProps) {
 
           {/* Add to List */}
           <button
+            onClick={() => setShowListModal(true)}
             className="flex-1 flex flex-col items-center gap-1 py-2.5 text-ink-secondary font-sans hover:bg-brand-muted transition-colors"
           >
             <ListPlus size={16} strokeWidth={1.8} />
@@ -190,5 +194,10 @@ export default function BookSidePanel({ book }: BookSidePanelProps) {
         </div>
       )}
     </aside>
-  );
+
+    {/* Add to List Modal */}
+    {showListModal && (
+      <AddToListModal book={book} onClose={() => setShowListModal(false)} />
+    )}
+  </>);
 }

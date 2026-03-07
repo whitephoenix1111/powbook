@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { BookOpen, Headphones, ChevronRight, TrendingUp, ArrowRight, Bookmark, ChevronLeft } from "lucide-react";
 
@@ -33,6 +34,7 @@ type FilterTab = (typeof FILTER_TABS)[number];
 ──────────────────────────────────────────────── */
 export default function DashboardPage() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>("All");
+  const router = useRouter();
   const { selectedBook, toggle } = useBookPanelStore();
 
   const handleSelect = (book: Book) => toggle(book);
@@ -66,7 +68,10 @@ export default function DashboardPage() {
           {FILTER_TABS.map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveFilter(tab)}
+              onClick={() => {
+                setActiveFilter(tab);
+                if (tab !== "All") router.push(`/category?type=${tab}`);
+              }}
               className={`px-4 py-1.5 rounded-full font-sans text-[13px] font-medium transition-all duration-150
                 ${
                   activeFilter === tab

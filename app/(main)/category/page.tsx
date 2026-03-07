@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { BookOpen, Headphones, ChevronRight, Heart, Check } from "lucide-react";
+import { BookOpen, Headphones, ChevronRight, Heart, Check, Search, X } from "lucide-react";
 import { ALL_BOOKS, ACTIVE_BOOK, type Book, type Genre } from "@/lib/mockData";
 import { useBookPanelStore } from "@/lib/store/bookPanelStore";
 import { useLibraryStore } from "@/lib/store/libraryStore";
@@ -28,19 +29,40 @@ const ALL_POOL: Book[] = [ACTIVE_BOOK, ...ALL_BOOKS].filter(
    Page
 ──────────────────────────────────────────────── */
 export default function CategoryPage() {
-  const [contentTab, setContentTab] = useState<ContentTab>("E-Books");
+  const searchParams = useSearchParams();
+  const initialType = (searchParams.get("type") as ContentTab) ?? "E-Books";
+
+  const [contentTab, setContentTab] = useState<ContentTab>(initialType);
   const [genreTab,   setGenreTab]   = useState<GenreTab>("All");
+  const [query,      setQuery]      = useState("");
   const { selectedBook, toggle }    = useBookPanelStore();
+
+  useEffect(() => {
+    const t = searchParams.get("type") as ContentTab | null;
+    if (t === "E-Books" || t === "Audiobooks") setContentTab(t);
+    setQuery(""); // reset search khi đổi type qua URL
+  }, [searchParams]);
   const { isOwned, isWishlisted, acquire, toggleWishlist } = useLibraryStore();
 
   /* Filter */
   const byType = ALL_POOL.filter((b) =>
     contentTab === "E-Books" ? !!b.pages : !!b.audioUrl
   );
-  const filtered =
+  const byGenre =
     genreTab === "All"
       ? byType
       : byType.filter((b) => b.genres.includes(genreTab as Genre));
+  const filtered = useMemo(
+    () =>
+      query.trim() === ""
+        ? byGenre
+        : byGenre.filter(
+            (b) =>
+              b.title.toLowerCase().includes(query.toLowerCase()) ||
+              b.author.toLowerCase().includes(query.toLowerCase())
+          ),
+    [byGenre, query]
+  );
 
   return (
     <div className="flex min-h-screen">
@@ -120,18 +142,44 @@ export default function CategoryPage() {
       <main className="flex-1 min-w-0 px-7 py-6 flex flex-col gap-6">
 
         {/* Header */}
-        <div>
-          <h1 className="font-display text-[24px] font-bold text-ink leading-none">
-            {contentTab}
-            {genreTab !== "All" && (
-              <span className="text-brand ml-2">
-                · {GENRE_TABS.find((g) => g.key === genreTab)?.label}
-              </span>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="font-display text-[24px] font-bold text-ink leading-none">
+              {contentTab}
+              {genreTab !== "All" && (
+                <span className="text-brand ml-2">
+                  · {GENRE_TABS.find((g) => g.key === genreTab)?.label}
+                </span>
+              )}
+            </h1>
+            <p className="font-sans text-[13px] text-ink-secondary mt-1">
+              Browse our collection of {contentTab.toLowerCase()}
+            </p>
+          </div>
+
+          {/* Search bar */}
+          <div className="relative flex-shrink-0 w-[240px]">
+            <Search
+              size={14}
+              strokeWidth={2}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-secondary pointer-events-none"
+            />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search title or author…"
+              className="w-full pl-8 pr-8 py-2 rounded-xl border border-warm-border bg-surface-raised font-sans text-[13px] text-ink placeholder:text-ink-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition-all"
+            />
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-secondary hover:text-ink transition-colors"
+              >
+                <X size={13} strokeWidth={2.5} />
+              </button>
             )}
-          </h1>
-          <p className="font-sans text-[13px] text-ink-secondary mt-1">
-            Browse our collection of {contentTab.toLowerCase()}
-          </p>
+          </div>
         </div>
 
         {/* Grid */}

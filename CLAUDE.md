@@ -9,6 +9,7 @@ Nền tảng quản lý nội dung số (E-book và Audiobook) với giao diện
 - Sách Paid → nút "Buy · $X.XX"
 - Đã owned → nút "Read" / "Play" mới unlock
 - Wishlist → lưu sách chưa mua để xem sau
+- Lists → user tự tạo collection đặt tên tuỳ ý
 
 ---
 
@@ -72,7 +73,8 @@ components/
 │   └── BentoCard.tsx
 ├── book/
 │   ├── BookCard.tsx
-│   └── BookSidePanel.tsx
+│   ├── BookSidePanel.tsx
+│   └── AddToListModal.tsx     # Modal chọn / tạo list mới
 ├── player/
 │   └── AudioPlayer.tsx
 └── viewer/
@@ -83,7 +85,7 @@ lib/
 └── store/
     ├── audioStore.ts
     ├── bookPanelStore.ts
-    └── libraryStore.ts        # ownedBooks + wishlist (thay savedStore cũ)
+    └── libraryStore.ts
 ```
 
 ---
@@ -141,7 +143,12 @@ BOOK CARD / SIDE PANEL
 
 WISHLIST (♡ icon)
 ├── Chưa owned → toggleWishlist() → wishlist[]
-└── Đã owned   → disabled (không có nghĩa wishlist sách đã mua)
+└── Đã owned   → disabled
+
+LISTS (Add to List button trong SidePanel)
+├── Mở AddToListModal → chọn list có sẵn hoặc tạo mới
+├── Mỗi list có tên tự đặt, chứa nhiều Book
+└── Xem tại /saved > tab Lists
 
 Khi Buy/Get từ Wishlist → sách tự động rời wishlist, vào ownedBooks
 ```
@@ -162,12 +169,26 @@ Khi Buy/Get từ Wishlist → sách tự động rời wishlist, vào ownedBooks
 ```ts
 ownedBooks: Book[]          // Đã Get Free / Buy → hiện ở Saved > Titles
 wishlist:   Book[]          // Đã ♡ → hiện ở Saved > Wishlist
+lists:      BookList[]      // User-created collections → hiện ở Saved > Lists
+
+interface BookList {
+  id: string
+  name: string
+  books: Book[]
+  createdAt: number
+}
 
 isOwned(id): boolean
 isWishlisted(id): boolean
-acquire(book): void         // Get Free hoặc Buy — mock success
-toggleWishlist(book): void  // Guard: không cho wishlist nếu đã owned
+acquire(book): void           // Get Free hoặc Buy — mock success
+toggleWishlist(book): void    // Guard: không cho wishlist nếu đã owned
 removeWishlist(id): void
+createList(name): string      // Tạo list mới → trả về id
+deleteList(listId): void
+addToList(listId, book): void
+removeFromList(listId, bookId): void
+isInList(listId, bookId): boolean
+getListsForBook(bookId): BookList[]
 ```
 
 ### `audioStore` (Zustand)
@@ -186,7 +207,7 @@ removeWishlist(id): void
 |---|---|---|
 | `/` | Dashboard | Bento Grid, filter tabs (All / E-Books / Audiobooks), BookSidePanel slide-in |
 | `/category` | Browse by Category | Filter 2 chiều: content type + genre, badge giá, nút Get/Buy, Wishlist ♡ |
-| `/saved` | My Library | Tab Titles (owned) + Tab Wishlist, search, Buy từ Wishlist |
+| `/saved` | My Library | Tab Titles + Wishlist (active) + Lists (active), search, Buy từ Wishlist |
 | `/book/[id]` | Book Reader | BookTextViewer 2 cột, text size (CSS var), bookmark (localStorage) |
 | `/login` | Create an account | — |
 | `/signin` | Sign in | — |
@@ -201,7 +222,7 @@ removeWishlist(id): void
 |---|---|---|
 | Dashboard | Tabs: All / E-Books / Audiobooks | — |
 | Category | Sidebar: E-Books / Audiobooks | Sidebar: All / History / Fiction / Sci & Tech / Dark & Thriller |
-| Saved | Tabs: Titles / Wishlist / Following / Lists / Notebook / History | Search client-side |
+| Saved | Tabs: Titles / Wishlist / Lists / Following / Notebook / History | Search client-side (Titles & Wishlist) |
 
 ```ts
 // E-Books:    books.filter(b => b.pages)
@@ -214,12 +235,22 @@ removeWishlist(id): void
 
 ## 10. Navigation Flow
 
+- Dashboard → click tab "E-Books" / "Audiobooks" → navigate `/category?type=E-Books` (hoặc Audiobooks)
+- Dashboard → click "All" → không navigate, giữ nguyên home
+- Category page → đọc `?type=` query param → pre-select format tab tương ứng
 - Dashboard → click sách → `BookSidePanel` slide-in (không navigate)
 - BookSidePanel → `Buy / Get Free` → `acquire()` → nút đổi thành `Read / Play`
 - BookSidePanel → `Read` (chỉ hiện sau owned) → navigate `/book/[id]`
 - BookSidePanel → `Play` (chỉ hiện sau owned) → set Zustand audioStore
+- BookSidePanel → `Add to List` → mở `AddToListModal`
+- AddToListModal → toggle list có sẵn hoặc tạo list mới → lưu vào `libraryStore.lists`
 - Category → click card → `BookSidePanel` slide-in
 - Saved > Wishlist → `Buy / Get Free` → chuyển sang Titles tab
+- Saved > Lists → click list → xem sách bên trong (detail view)
+
+### HeroBentoCard / AudioBentoCard — ownership guard
+- **Owned** → `Read Now` navigate thật / `Play Sample` play audio thật
+- **Chưa owned** → cả hai gọi `onClick()` → mở SidePanel (không cho access nội dung)
 
 ---
 
@@ -234,8 +265,12 @@ removeWishlist(id): void
 | Text size | CSS variable thật | `--reader-font-size` |
 | Payment | Mock — acquire() thành công ngay | Không cần backend |
 | Library state | Zustand `libraryStore` | Không persist — reset khi reload |
+| Lists state | Zustand `libraryStore.lists` | Không persist — reset khi reload |
 | Read / Play | Chỉ unlock sau khi owned | UX e-commerce chuẩn |
-| Tabs ở /saved | Titles + Wishlist active | Còn lại UI only |
+| Tabs ở /saved | Titles + Wishlist + Lists active | Following / Notebook / History UI only |
+| Category card | `aspect-[2/3]` cover + flex-1 info | Đồng đều, button Buy luôn cùng hàng |
+| Category sidebar | `self-stretch` thay sticky | Fill đủ chiều cao, không hở chân |
+| Filter tabs home | "E-Books"/"Audiobooks" → navigate `/category?type=` | "All" giữ nguyên home |
 
 ---
 
@@ -256,16 +291,62 @@ removeWishlist(id): void
 
 ---
 
-## 13. Trạng thái & Việc cần làm tiếp
+## 13. AddToListModal — UX Detail
+
+```
+Mở khi: click "Add to List" trong BookSidePanel
+Đóng khi: click backdrop hoặc nút X
+
+Nội dung:
+- Header: "Add to List" + tên sách
+- List items: checkbox toggle (add/remove), tên list, số sách
+- Flash "Added!" 1.2s khi add thành công
+- Input tạo list mới: Enter để confirm, Escape để cancel
+- Nút "Create new list" dạng dashed border
+
+Saved > Lists:
+- Index view: grid các lists, mini cover stack (3 bìa xếp chồng)
+- Detail view: click list → xem sách, nút xoá từng sách, nút xoá cả list
+- Back to Lists button
+```
+
+---
+
+## 14. Auth System
+
+> Chi tiết đầy đủ xem `CLAUDE-AUTH.md`
+
+| File | Vai trò |
+|---|---|
+| `lib/store/authStore.ts` | Zustand + persist → `localStorage["lv_auth"]` |
+| `lib/store/libraryStore.ts` | Đã thêm persist → `localStorage["lv_library"]` |
+| `app/(auth)/login/page.tsx` | Register flow hoàn chỉnh |
+| `app/(auth)/signin/page.tsx` | Login flow hoàn chỉnh |
+| `components/layout/Navbar.tsx` | User dropdown + logout |
+| `components/layout/Sidebar.tsx` | Logout button |
+
+---
+
+## 15. Trạng thái & Việc có thể làm tiếp
 
 ### Đã hoàn chỉnh
 - Toàn bộ 6 routes, layout shell, AudioPlayer global
 - BookTextViewer, Bookmark (localStorage)
 - Freemium flow: Get Free / Buy / Wishlist / My Library
-- libraryStore thay thế savedStore cũ
+- Lists flow: AddToListModal + Saved > Lists tab đầy đủ
+- Category page: card design đồng đều, sidebar fill height, **search bar** (title/author)
+- Home filter tabs: navigate sang /category với preset
+- Ownership guard: HeroBentoCard / AudioBentoCard không cho read/play khi chưa owned
+- **Auth system**: register / login / logout, persist localStorage
+- **Navbar**: user dropdown (avatar động, tên từ email, Sign out)
+- **Sidebar**: Logout button thật (gọi logout() + redirect /signin)
+- **Login page**: redesign, validation, password strength bar, no sidebar
+- **Signin page**: redesign đồng bộ, error states, no sidebar
 
 ### Có thể làm tiếp
 - Dashboard: thêm badge giá + nút Buy vào BentoCard
-- Persist libraryStore với `zustand/middleware/persist` (localStorage)
-- BookSidePanel: nút Read/Play hiện sample trước khi owned (UX khuyến khích mua)
+- BookSidePanel: sample audio/text preview trước khi owned
 - Saved > Titles: phân biệt ebook / audiobook bằng icon nhỏ
+- Rename list (edit tên sau khi tạo)
+- Toast notification toàn app thay flash text trong modal
+- Route guard: redirect về /signin nếu chưa đăng nhập
