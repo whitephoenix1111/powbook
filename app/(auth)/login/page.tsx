@@ -3,35 +3,163 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { Eye, EyeOff, CheckCircle2, AlertCircle, ArrowRight, BookOpen, Flame } from "lucide-react";
 import { useAuthStore } from "@/lib/store/authStore";
+
+/* ── Inline SVG Illustrations ────────────────────────────── */
+function IllustrationReading() {
+  return (
+    <svg viewBox="0 0 280 240" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      {/* Chair */}
+      <rect x="80" y="160" width="120" height="12" rx="6" fill="#D4B896" />
+      <rect x="90" y="172" width="12" height="40" rx="6" fill="#C4A882" />
+      <rect x="178" y="172" width="12" height="40" rx="6" fill="#C4A882" />
+      <rect x="75" y="120" width="130" height="45" rx="12" fill="#E8D5BC" />
+      <rect x="75" y="100" width="16" height="65" rx="8" fill="#C4A882" />
+      {/* Person */}
+      <circle cx="155" cy="88" r="22" fill="#F5C9A0" />
+      {/* Hair */}
+      <ellipse cx="155" cy="72" rx="20" ry="12" fill="#3D2B1F" />
+      <rect x="135" y="72" width="8" height="18" rx="4" fill="#3D2B1F" />
+      {/* Body */}
+      <rect x="128" y="108" width="54" height="52" rx="14" fill="#E8580A" />
+      {/* Book open */}
+      <rect x="118" y="128" width="36" height="26" rx="4" fill="#FFF8F0" transform="rotate(-8 118 128)" />
+      <rect x="150" y="126" width="36" height="26" rx="4" fill="#FFF8F0" transform="rotate(5 150 126)" />
+      <line x1="148" y1="128" x2="152" y2="154" stroke="#D4B896" strokeWidth="2" />
+      {/* Lines on book */}
+      <line x1="124" y1="136" x2="148" y2="133" stroke="#C4A882" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="125" y1="141" x2="147" y2="138" stroke="#C4A882" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="126" y1="146" x2="146" y2="143" stroke="#C4A882" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="153" y1="134" x2="177" y2="132" stroke="#C4A882" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="154" y1="139" x2="176" y2="137" stroke="#C4A882" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="155" y1="144" x2="175" y2="142" stroke="#C4A882" strokeWidth="1.5" strokeLinecap="round" />
+      {/* Arms */}
+      <rect x="108" y="120" width="28" height="14" rx="7" fill="#F5C9A0" transform="rotate(20 108 120)" />
+      <rect x="164" y="115" width="28" height="14" rx="7" fill="#F5C9A0" transform="rotate(-15 164 115)" />
+      {/* Floating stars */}
+      <circle cx="210" cy="70" r="4" fill="#F5C842" opacity="0.8" />
+      <circle cx="225" cy="90" r="2.5" fill="#E8580A" opacity="0.6" />
+      <circle cx="65" cy="80" r="3" fill="#F5C842" opacity="0.7" />
+      <circle cx="55" cy="105" r="2" fill="#E8580A" opacity="0.5" />
+    </svg>
+  );
+}
+
+function IllustrationCurated() {
+  return (
+    <svg viewBox="0 0 280 240" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      {/* Stack of books */}
+      <rect x="60" y="170" width="160" height="20" rx="6" fill="#E8580A" />
+      <rect x="70" y="152" width="140" height="20" rx="6" fill="#F5C842" />
+      <rect x="80" y="134" width="120" height="20" rx="6" fill="#C4A882" />
+      <rect x="90" y="116" width="100" height="20" rx="6" fill="#E8D5BC" />
+      {/* Book spines detail */}
+      <line x1="60" y1="176" x2="220" y2="176" stroke="rgba(0,0,0,0.08)" strokeWidth="1" />
+      <line x1="70" y1="158" x2="210" y2="158" stroke="rgba(0,0,0,0.08)" strokeWidth="1" />
+      {/* Magnifying glass */}
+      <circle cx="165" cy="82" r="38" fill="white" stroke="#E8580A" strokeWidth="4" opacity="0.95" />
+      <circle cx="165" cy="82" r="30" fill="#FFF8F0" />
+      {/* Star inside glass */}
+      <path d="M165 58 L169 72 L183 72 L172 81 L176 95 L165 87 L154 95 L158 81 L147 72 L161 72 Z" fill="#F5C842" />
+      {/* Glass handle */}
+      <line x1="190" y1="107" x2="210" y2="128" stroke="#E8580A" strokeWidth="6" strokeLinecap="round" />
+      {/* Sparkles */}
+      <circle cx="80" cy="75" r="4" fill="#F5C842" opacity="0.7" />
+      <circle cx="95" cy="55" r="2.5" fill="#E8580A" opacity="0.5" />
+      <circle cx="215" cy="65" r="3" fill="#F5C842" opacity="0.6" />
+    </svg>
+  );
+}
+
+function IllustrationListen() {
+  return (
+    <svg viewBox="0 0 280 240" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      {/* Person walking */}
+      <circle cx="140" cy="72" r="24" fill="#F5C9A0" />
+      {/* Hair */}
+      <ellipse cx="140" cy="57" rx="22" ry="13" fill="#3D2B1F" />
+      {/* Headphones */}
+      <path d="M118 68 Q118 48 140 48 Q162 48 162 68" stroke="#E8580A" strokeWidth="5" fill="none" strokeLinecap="round" />
+      <rect x="111" y="64" width="12" height="18" rx="6" fill="#E8580A" />
+      <rect x="157" y="64" width="12" height="18" rx="6" fill="#E8580A" />
+      {/* Body */}
+      <rect x="115" y="94" width="50" height="56" rx="14" fill="#3D2B1F" />
+      {/* Legs walking */}
+      <rect x="120" y="146" width="16" height="44" rx="8" fill="#3D2B1F" transform="rotate(10 120 146)" />
+      <rect x="144" y="146" width="16" height="44" rx="8" fill="#3D2B1F" transform="rotate(-8 144 146)" />
+      {/* Shoes */}
+      <ellipse cx="126" cy="192" rx="14" ry="7" fill="#1A1410" transform="rotate(10 126 192)" />
+      <ellipse cx="156" cy="190" rx="14" ry="7" fill="#1A1410" transform="rotate(-8 156 190)" />
+      {/* Arms */}
+      <rect x="100" y="100" width="24" height="12" rx="6" fill="#F5C9A0" transform="rotate(30 100 100)" />
+      <rect x="156" y="96" width="24" height="12" rx="6" fill="#F5C9A0" transform="rotate(-20 156 96)" />
+      {/* Phone in hand */}
+      <rect x="172" y="106" width="18" height="28" rx="5" fill="#E8D5BC" stroke="#C4A882" strokeWidth="1.5" />
+      <rect x="175" y="110" width="12" height="18" rx="3" fill="#E8580A" opacity="0.3" />
+      {/* Sound waves */}
+      <path d="M205 95 Q215 105 205 115" stroke="#E8580A" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.7" />
+      <path d="M212 88 Q228 105 212 122" stroke="#E8580A" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.4" />
+      {/* Musical notes */}
+      <text x="62" y="110" fontSize="22" fill="#F5C842" opacity="0.7">♪</text>
+      <text x="42" y="80" fontSize="16" fill="#E8580A" opacity="0.5">♫</text>
+    </svg>
+  );
+}
+
+function IllustrationSubscription() {
+  return (
+    <svg viewBox="0 0 280 240" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      {/* Three floating cards */}
+      {/* Card 1 — bottom */}
+      <rect x="50" y="140" width="100" height="72" rx="12" fill="#E8D5BC" transform="rotate(-6 50 140)" />
+      {/* Card 2 — middle */}
+      <rect x="80" y="115" width="100" height="72" rx="12" fill="#F5C842" transform="rotate(3 80 115)" />
+      {/* Card 3 — top */}
+      <rect x="100" y="90" width="110" height="75" rx="12" fill="white" stroke="#E8D5BC" strokeWidth="2" />
+      {/* Card 3 content */}
+      <circle cx="124" cy="116" r="14" fill="#E8580A" />
+      <path d="M118 116 L122 120 L130 112" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="145" y="108" width="52" height="6" rx="3" fill="#E8D5BC" />
+      <rect x="145" y="120" width="38" height="6" rx="3" fill="#E8D5BC" />
+      <rect x="108" y="138" width="90" height="6" rx="3" fill="#E8D5BC" opacity="0.6" />
+      <rect x="108" y="150" width="70" height="6" rx="3" fill="#E8D5BC" opacity="0.4" />
+      {/* Flame icon top right */}
+      <circle cx="210" cy="72" r="28" fill="#E8580A" />
+      <path d="M210 58 C210 58 222 68 220 78 C220 84 215 88 210 88 C205 88 200 84 200 78 C198 68 210 58 210 58Z" fill="white" opacity="0.9" />
+      <path d="M210 72 C210 72 216 78 214 83 C213 86 210 88 210 88 C210 88 207 86 206 83 C204 78 210 72 210 72Z" fill="#F5C842" />
+      {/* Sparkles */}
+      <circle cx="58" cy="108" r="4" fill="#F5C842" opacity="0.8" />
+      <circle cx="240" cy="140" r="3" fill="#E8580A" opacity="0.5" />
+      <circle cx="72" cy="180" r="2.5" fill="#C4A882" opacity="0.6" />
+    </svg>
+  );
+}
+
+const SLIDE_ILLUSTRATIONS = [
+  IllustrationReading,
+  IllustrationCurated,
+  IllustrationListen,
+  IllustrationSubscription,
+];
 
 /* ── Carousel slides ─────────────────────────────────────── */
 const SLIDES = [
   {
     title: "Immersive Reading Mode",
     desc: "Listen while the text highlights — ebook and audiobook in perfect sync.",
-    img: "https://illustrations.popsy.co/amber/reading.svg",
-    accent: "#E8580A",
   },
   {
     title: "Curated For Your Taste",
     desc: "Our recommendation engine surfaces hidden gems you'd never find on your own.",
-    img: "https://illustrations.popsy.co/amber/woman-meditating.svg",
-    accent: "#C94A06",
   },
   {
     title: "Listen Anywhere",
     desc: "Download and pick up right where you left off — on any device, anytime.",
-    img: "https://illustrations.popsy.co/amber/traveling.svg",
-    accent: "#A33A04",
   },
   {
     title: "One Subscription, Everything",
     desc: "Litverse, Recognotes, and Sparks — all with a single account.",
-    img: "https://illustrations.popsy.co/amber/online-learning.svg",
-    accent: "#E8580A",
   },
 ];
 
@@ -161,6 +289,7 @@ export default function LoginPage() {
   }
 
   const current = SLIDES[slide];
+  const CurrentIllustration = SLIDE_ILLUSTRATIONS[slide];
 
   /* ── Field state helpers ── */
   const emailState =
@@ -208,17 +337,10 @@ export default function LoginPage() {
           {/* Illustration */}
           <div className="flex-1 flex items-center justify-center">
             <div
-              className="relative w-[260px] h-[240px] transition-opacity duration-300"
+              className="w-[260px] h-[240px] transition-opacity duration-300"
               style={{ opacity: imgFaded ? 0 : 1 }}
             >
-              <Image
-                key={current.img}
-                src={current.img}
-                alt={current.title}
-                fill
-                className="object-contain"
-                unoptimized
-              />
+              <CurrentIllustration />
             </div>
           </div>
 
@@ -281,7 +403,7 @@ export default function LoginPage() {
                 <div className="w-6 h-6 rounded-md bg-brand flex items-center justify-center group-hover:bg-brand-hover transition-colors">
                   <BookOpen size={12} strokeWidth={2} className="text-white" />
                 </div>
-                <span className="font-display text-[14px] font-bold text-ink group-hover:text-brand transition-colors">Litverse</span>
+                <span className="font-display text-[14px] font-bold text-ink group-hover:text-brand transition-colors">Powbook</span>
               </Link>
 
               {/* Heading */}
@@ -379,7 +501,7 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {/* Server error — email đã tồn tại, etc. */}
+              {/* Server error */}
               {serverError && (
                 <div className="mb-4 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200">
                   <AlertCircle size={14} className="text-red-500 flex-shrink-0" />

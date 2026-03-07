@@ -6,6 +6,7 @@ import Image from "next/image";
 import { BookOpen, Headphones, ChevronRight, TrendingUp, ArrowRight, Bookmark, ChevronLeft } from "lucide-react";
 
 import { useBookPanelStore } from "@/lib/store/bookPanelStore";
+import { useAuthStore } from "@/lib/store/authStore";
 import BentoGrid from "@/components/bento/BentoGrid";
 import {
   HeroBentoCard,
@@ -28,6 +29,23 @@ const FILTER_TABS = ["All", "E-Books", "Audiobooks"] as const;
 type FilterTab = (typeof FILTER_TABS)[number];
 
 /* ────────────────────────────────────────────────
+   Helpers
+──────────────────────────────────────────────── */
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+/** Lấy tên hiển thị từ email: "bruce.wayne@mail.com" → "Bruce" */
+function getDisplayName(email: string) {
+  const local = email.split("@")[0];          // "bruce.wayne"
+  const first = local.split(/[._-]/)[0];      // "bruce"
+  return first.charAt(0).toUpperCase() + first.slice(1); // "Bruce"
+}
+
+/* ────────────────────────────────────────────────
    Page component
    Shell (Sidebar + Navbar) được app/(main)/layout.tsx xử lý.
    Page này chỉ trả về nội dung bên trong vùng content.
@@ -36,6 +54,7 @@ export default function DashboardPage() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>("All");
   const router = useRouter();
   const { selectedBook, toggle } = useBookPanelStore();
+  const currentUser = useAuthStore((s) => s.currentUser);
 
   const handleSelect = (book: Book) => toggle(book);
   const isActive = (book: Book) => selectedBook?.id === book.id;
@@ -44,6 +63,15 @@ export default function DashboardPage() {
     scrollRef.current?.scrollBy({ left: dir === "right" ? 480 : -480, behavior: "smooth" });
   };
 
+  // Greeting logic
+  const greeting = getGreeting();
+  const headingText = currentUser
+    ? `${greeting}, ${getDisplayName(currentUser.email)} 👋`
+    : `${greeting} 👋`;
+  const subText = currentUser
+    ? "Continue your reading journey · 3 books in progress"
+    : "Discover your next great read — sign in to track progress";
+
   return (
     <main className="px-6 py-5 space-y-7">
 
@@ -51,10 +79,10 @@ export default function DashboardPage() {
         <div className="flex items-end justify-between">
           <div>
             <h1 className="font-display text-[26px] font-bold text-ink leading-none">
-              Good morning, Bruce 👋
+              {headingText}
             </h1>
             <p className="font-sans text-[14px] text-ink-secondary mt-1">
-              Continue your reading journey · 3 books in progress
+              {subText}
             </p>
           </div>
           <div className="flex items-center gap-1.5 font-sans text-[12px] text-ink-secondary bg-surface-card border border-warm-border rounded-xl px-3 py-1.5">

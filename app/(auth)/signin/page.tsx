@@ -3,16 +3,156 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import { Eye, EyeOff, AlertCircle, ArrowRight, BookOpen, CheckCircle2, Flame } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, ArrowRight, CheckCircle2, Flame } from "lucide-react";
 import { useAuthStore } from "@/lib/store/authStore";
 
-/* ── Slides (shared với login) ───────────────────────────── */
+/* ── Inline SVG Illustrations (shared với login) ─────────── */
+function IllustrationWelcome() {
+  return (
+    <svg viewBox="0 0 280 240" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      {/* Open book big */}
+      <rect x="55" y="110" width="80" height="105" rx="8" fill="#E8D5BC" transform="rotate(-5 55 110)" />
+      <rect x="145" y="108" width="80" height="105" rx="8" fill="#FFF8F0" transform="rotate(5 145 108)" />
+      <rect x="130" y="105" width="20" height="110" rx="4" fill="#C4A882" />
+      {/* Lines on pages */}
+      <line x1="75" y1="135" x2="125" y2="131" stroke="#C4A882" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+      <line x1="76" y1="145" x2="124" y2="141" stroke="#C4A882" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+      <line x1="77" y1="155" x2="123" y2="151" stroke="#C4A882" strokeWidth="2" strokeLinecap="round" opacity="0.4" />
+      <line x1="78" y1="165" x2="122" y2="161" stroke="#C4A882" strokeWidth="2" strokeLinecap="round" opacity="0.4" />
+      <line x1="155" y1="134" x2="205" y2="138" stroke="#C4A882" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+      <line x1="156" y1="144" x2="204" y2="148" stroke="#C4A882" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+      <line x1="157" y1="154" x2="203" y2="158" stroke="#C4A882" strokeWidth="2" strokeLinecap="round" opacity="0.4" />
+      <line x1="158" y1="164" x2="202" y2="168" stroke="#C4A882" strokeWidth="2" strokeLinecap="round" opacity="0.4" />
+      {/* Bookmark */}
+      <path d="M195 108 L195 138 L188 132 L181 138 L181 108 Z" fill="#E8580A" />
+      {/* Welcome banner */}
+      <rect x="80" y="60" width="120" height="42" rx="10" fill="#E8580A" />
+      <text x="140" y="80" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold" fontFamily="serif">Welcome Back!</text>
+      <text x="140" y="95" textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize="9" fontFamily="sans-serif">Your library awaits</text>
+      {/* Arrow from banner to book */}
+      <path d="M140 102 L140 112" stroke="#E8580A" strokeWidth="2" strokeDasharray="3,2" strokeLinecap="round" opacity="0.6" />
+      {/* Stars */}
+      <circle cx="58" cy="80" r="4" fill="#F5C842" opacity="0.8" />
+      <circle cx="224" cy="72" r="3" fill="#F5C842" opacity="0.6" />
+      <circle cx="240" cy="155" r="2.5" fill="#E8580A" opacity="0.5" />
+    </svg>
+  );
+}
+
+function IllustrationPickUp() {
+  return (
+    <svg viewBox="0 0 280 240" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      {/* Tablet/device */}
+      <rect x="90" y="55" width="100" height="140" rx="14" fill="#1A1410" />
+      <rect x="96" y="65" width="88" height="115" rx="8" fill="#E8D5BC" />
+      {/* Screen content — book page */}
+      <rect x="103" y="75" width="74" height="8" rx="3" fill="#C4A882" opacity="0.6" />
+      <rect x="103" y="88" width="74" height="4" rx="2" fill="#C4A882" opacity="0.4" />
+      <rect x="103" y="96" width="60" height="4" rx="2" fill="#C4A882" opacity="0.4" />
+      <rect x="103" y="104" width="74" height="4" rx="2" fill="#C4A882" opacity="0.4" />
+      <rect x="103" y="112" width="50" height="4" rx="2" fill="#C4A882" opacity="0.4" />
+      {/* Progress bar */}
+      <rect x="103" y="128" width="74" height="6" rx="3" fill="#E8D5BC" />
+      <rect x="103" y="128" width="48" height="6" rx="3" fill="#E8580A" />
+      <text x="140" y="144" textAnchor="middle" fill="#C4A882" fontSize="8">65% complete</text>
+      {/* Bookmark on page */}
+      <rect x="158" y="65" width="12" height="22" rx="2" fill="#F5C842" />
+      <path d="M158 82 L164 87 L170 82" fill="#F5C842" />
+      {/* Home button */}
+      <circle cx="140" cy="188" r="6" fill="#2D1F0E" />
+      {/* Sync icon floating */}
+      <circle cx="215" cy="90" r="22" fill="#E8580A" opacity="0.12" />
+      <path d="M205 85 Q215 78 225 85 M225 95 Q215 102 205 95" stroke="#E8580A" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <path d="M222 82 L225 85 L222 88" stroke="#E8580A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M208 92 L205 95 L208 98" stroke="#E8580A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Stars */}
+      <circle cx="62" cy="95" r="4" fill="#F5C842" opacity="0.7" />
+      <circle cx="55" cy="120" r="2.5" fill="#E8580A" opacity="0.5" />
+    </svg>
+  );
+}
+
+function IllustrationLists() {
+  return (
+    <svg viewBox="0 0 280 240" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      {/* Three collection cards */}
+      <rect x="45" y="80" width="85" height="110" rx="10" fill="#F5C842" />
+      <rect x="50" y="88" width="75" height="50" rx="6" fill="rgba(0,0,0,0.08)" />
+      <rect x="55" y="148" width="50" height="6" rx="3" fill="rgba(0,0,0,0.2)" />
+      <rect x="55" y="160" width="36" height="5" rx="2.5" fill="rgba(0,0,0,0.12)" />
+      {/* Mini book covers inside */}
+      <rect x="54" y="92" width="22" height="30" rx="3" fill="#E8580A" opacity="0.8" />
+      <rect x="80" y="92" width="22" height="30" rx="3" fill="#C4A882" opacity="0.8" />
+      <rect x="106" y="94" width="14" height="26" rx="3" fill="#3D2B1F" opacity="0.4" />
+
+      <rect x="105" y="95" width="85" height="110" rx="10" fill="#E8D5BC" />
+      <rect x="110" y="103" width="75" height="50" rx="6" fill="rgba(0,0,0,0.06)" />
+      <rect x="115" y="163" width="50" height="6" rx="3" fill="rgba(0,0,0,0.15)" />
+      <rect x="115" y="175" width="36" height="5" rx="2.5" fill="rgba(0,0,0,0.08)" />
+      <rect x="114" y="107" width="22" height="30" rx="3" fill="#E8580A" opacity="0.7" />
+      <rect x="140" y="107" width="22" height="30" rx="3" fill="#F5C842" opacity="0.7" />
+
+      <rect x="160" y="65" width="85" height="110" rx="10" fill="white" stroke="#E8D5BC" strokeWidth="1.5" />
+      <rect x="165" y="73" width="75" height="50" rx="6" fill="#E8D5BC" />
+      <rect x="170" y="133" width="50" height="6" rx="3" fill="#C4A882" />
+      <rect x="170" y="145" width="36" height="5" rx="2.5" fill="#E8D5BC" />
+      <rect x="169" y="77" width="22" height="30" rx="3" fill="#E8580A" />
+      <rect x="195" y="77" width="22" height="30" rx="3" fill="#3D2B1F" opacity="0.6" />
+      {/* Plus badge */}
+      <circle cx="232" cy="62" r="14" fill="#E8580A" />
+      <line x1="232" y1="56" x2="232" y2="68" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="226" y1="62" x2="238" y2="62" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+      {/* Stars */}
+      <circle cx="48" cy="55" r="4" fill="#E8580A" opacity="0.6" />
+      <circle cx="240" cy="175" r="3" fill="#F5C842" opacity="0.7" />
+    </svg>
+  );
+}
+
+function IllustrationAll() {
+  return (
+    <svg viewBox="0 0 280 240" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      {/* Central key */}
+      <circle cx="140" cy="110" r="38" fill="white" stroke="#E8D5BC" strokeWidth="3" />
+      <circle cx="140" cy="110" r="26" fill="#FFF8F0" stroke="#E8D5BC" strokeWidth="2" />
+      <circle cx="140" cy="110" r="12" fill="#E8580A" />
+      {/* Key handle dots */}
+      <circle cx="140" cy="110" r="5" fill="white" />
+      {/* Key shaft */}
+      <rect x="174" y="107" width="40" height="6" rx="3" fill="#E8580A" />
+      <rect x="200" y="113" width="8" height="10" rx="2" fill="#E8580A" />
+      <rect x="210" y="113" width="8" height="8" rx="2" fill="#E8580A" />
+      {/* Three app icons orbiting */}
+      <circle cx="80" cy="68" r="22" fill="#F5C842" />
+      <text x="80" y="73" textAnchor="middle" fontSize="16">📚</text>
+      <circle cx="200" cy="68" r="22" fill="#E8D5BC" />
+      <text x="200" y="73" textAnchor="middle" fontSize="16">🎧</text>
+      <circle cx="140" cy="185" r="22" fill="#3D2B1F" />
+      <text x="140" y="190" textAnchor="middle" fontSize="16">✨</text>
+      {/* Connecting lines */}
+      <line x1="100" y1="82" x2="122" y2="95" stroke="#E8D5BC" strokeWidth="1.5" strokeDasharray="4,3" />
+      <line x1="180" y1="82" x2="158" y2="95" stroke="#E8D5BC" strokeWidth="1.5" strokeDasharray="4,3" />
+      <line x1="140" y1="163" x2="140" y2="148" stroke="#E8D5BC" strokeWidth="1.5" strokeDasharray="4,3" />
+      {/* Stars */}
+      <circle cx="52" cy="130" r="4" fill="#E8580A" opacity="0.5" />
+      <circle cx="232" cy="145" r="3" fill="#F5C842" opacity="0.7" />
+    </svg>
+  );
+}
+
+const SLIDE_ILLUSTRATIONS = [
+  IllustrationWelcome,
+  IllustrationPickUp,
+  IllustrationLists,
+  IllustrationAll,
+];
+
+/* ── Slides ──────────────────────────────────────────────── */
 const SLIDES = [
-  { title: "Welcome Back",            desc: "Your library is right where you left it.",                             img: "https://illustrations.popsy.co/amber/reading.svg" },
-  { title: "Pick Up Where You Left",  desc: "Bookmarks, progress, and notes — all synced and waiting.",            img: "https://illustrations.popsy.co/amber/traveling.svg" },
-  { title: "Your Lists, Your Rules",  desc: "Custom collections you built are still here, fully intact.",          img: "https://illustrations.popsy.co/amber/woman-meditating.svg" },
-  { title: "One Account, Everything", desc: "Litverse, Recognotes, and Sparks — sign in once, access all.",        img: "https://illustrations.popsy.co/amber/online-learning.svg" },
+  { title: "Welcome Back",            desc: "Your library is right where you left it." },
+  { title: "Pick Up Where You Left",  desc: "Bookmarks, progress, and notes — all synced and waiting." },
+  { title: "Your Lists, Your Rules",  desc: "Custom collections you built are still here, fully intact." },
+  { title: "One Account, Everything", desc: "Litverse, Recognotes, and Sparks — sign in once, access all." },
 ];
 
 const SOCIAL = [
@@ -84,6 +224,7 @@ export default function SignInPage() {
   }
 
   const current = SLIDES[slide];
+  const CurrentIllustration = SLIDE_ILLUSTRATIONS[slide];
 
   const emailState = emailTouched && emailError ? "error" : emailTouched && !emailError ? "ok" : "idle";
   const passwordState = passwordTouched && passwordError ? "error" : passwordTouched && !passwordError ? "ok" : "idle";
@@ -112,8 +253,8 @@ export default function SignInPage() {
           </Link>
 
           <div className="flex-1 flex items-center justify-center">
-            <div className="relative w-[260px] h-[240px] transition-opacity duration-300" style={{ opacity: imgFaded ? 0 : 1 }}>
-              <Image key={current.img} src={current.img} alt={current.title} fill className="object-contain" unoptimized />
+            <div className="w-[260px] h-[240px] transition-opacity duration-300" style={{ opacity: imgFaded ? 0 : 1 }}>
+              <CurrentIllustration />
             </div>
           </div>
 
