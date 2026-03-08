@@ -1,184 +1,226 @@
-# Auth System — Litverse
+# Auth System — Powbook
 
-> File này tài liệu hoá toàn bộ hệ thống auth (register / login / logout).  
+> File này tài liệu hoá toàn bộ hệ thống auth (register / login / logout / session).
 > Xem `CLAUDE.md` cho tổng quan dự án.
 
 ---
 
-## 1. authStore (`lib/store/authStore.ts`)
+## 1. Tổng quan
 
-Zustand store với `persist` middleware → lưu vào `localStorage["lv_auth"]`.
+Auth dựa trên **JWT + httpOnly cookie** — không dùng localStorage cho session.
+
+```
+Client                        Server (API Routes)
+  │                                  │
+  ├─ POST /api/auth/register ────────► hash password (scrypt)
+  │                                  │ ghi users.json
+  │  ◄─── set-cookie: lv_session ───┤ JWT (7 ngày)
+  │                                  │
+  ├─ POST /api/auth/login ───────────► verify password
+  │  ◄─── set-cookie: lv_session ───┤ JWT (7 ngày)
+  │                                  │
+  ├─ GET  /api/auth/me ──────────────► verifyJWT(cookie)
+  │  ◄─── { user: {id, email} } ────┤
+  │                                  │
+  └─ POST /api/auth/logout ──────────► clear cookie
+```
+
+**Cookie:** `lv_session` — `httpOnly`, `sameSite: lax`, `maxAge: 7 ngày`, `secure` trên production.
+
+---
+
+## 2. lib/auth.ts — Server-only utilities
+
+> Import file này **CHỈ** trong API routes. Dùng Node.js `crypto`, không có dependency ngoài.
+
+| Hàm | Mô tả |
+|---|---|
+| `hashPassword(password)` | scrypt → trả về `"salt:hash"` lưu vào users.json |
+| `verifyPassword(password, stored)` | so sánh timing-safe với stored `"salt:hash"` |
+| `signJWT(userId, email)` | HS256 thủ công, payload `{ userId, email, iat, exp }`, mặc định 7 ngày |
+| `verifyJWT(token)` | trả về payload hoặc `null` nếu invalid / hết hạn |
+| `COOKIE_NAME` | `"lv_session"` |
+
+---
+
+## 3. API Routes
+
+### `POST /api/auth/register`
+```
+Body: { email, password }
+→ Kiểm tra trùng email (case-insensitive)
+→ hashPassword() → ghi users.json (id: uuid-v4, createdAt: timestamp)
+→ signJWT() → set cookie
+← 200: { ok, id, email }
+← 409: { error: "Email already registered." }
+← 400: { error: "Email and password are required." }
+```
+
+### `POST /api/auth/login`
+```
+Body: { email, password }
+→ Tìm user theo email (case-insensitive)
+→ verifyPassword()
+→ signJWT() → set cookie
+← 200: { ok, id, email }
+← 401: { error: "Incorrect email or password." }
+```
+
+### `POST /api/auth/logout`
+```
+→ Xoá cookie lv_session (set maxAge: 0)
+← 200: { ok }
+```
+
+### `GET /api/auth/me`
+```
+→ Đọc cookie → verifyJWT()
+← 200: { user: { id, email } }   // logged in
+← 200: { user: null }            // không có cookie hoặc hết hạn
+```
+
+---
+
+## 4. authStore (`lib/store/authStore.ts`)
+
+Zustand store **không persist** — session được giữ bởi httpOnly cookie phía server.  
+`currentUser` là client-side cache, được restore mỗi khi app mount qua `hydrate()`.
 
 ```ts
 interface User {
+  id:    string   // uuid-v4
   email: string
-  password: string  // plain-text mock — không có backend
-  createdAt: number
 }
 
 interface AuthState {
-  users: User[]             // danh sách tất cả tài khoản đã đăng ký
-  currentUser: User | null  // session hiện tại (null = chưa login)
+  currentUser: User | null
 
-  register(email, password): { ok: boolean; error?: string }
-  login(email, password):    { ok: boolean; error?: string }
-  logout(): void
-  isLoggedIn(): boolean
+  register(email, password): Promise<{ ok: boolean; error?: string }>
+  login(email, password):    Promise<{ ok: boolean; error?: string }>
+  logout():                  Promise<void>
+  hydrate():                 Promise<void>   // gọi GET /api/auth/me
+  isLoggedIn():              boolean
 }
 ```
 
-### Logic chi tiết
+### Side effects khi login / register thành công
+```
+set({ currentUser })
+→ useLibraryStore.getState().setUser(userId)   // fetch library từ API
+```
 
-| Action | Behavior |
-|---|---|
-| `register` | Kiểm tra email trùng (case-insensitive) → thêm vào `users[]` + set `currentUser` |
-| `login` | Tìm user khớp email + password → set `currentUser` |
-| `logout` | Set `currentUser = null` |
-| Persist | `users` + `currentUser` được lưu, restore khi reload |
+### Side effects khi logout
+```
+set({ currentUser: null })
+→ useLibraryStore.getState().clearUser()       // xoá cache library
+```
 
-### Error messages
-- `"An account with this email already exists."` — register trùng email
-- `"Incorrect email or password."` — login sai credentials
+### hydrate() — gọi trong layout.tsx
+```tsx
+// app/(main)/layout.tsx
+useEffect(() => {
+  hydrate()
+  // Dọn localStorage keys cũ từ version mock trước
+  localStorage.removeItem("lv_auth")
+  localStorage.removeItem("lv_library")
+}, [])
+```
 
 ---
 
-## 2. libraryStore — persist
+## 5. Data file — `data/users.json`
 
-`lib/store/libraryStore.ts` đã thêm `persist` middleware → `localStorage["lv_library"]`.
-
-Các field được persist: `ownedBooks`, `wishlist`, `lists`.  
-Các function (isOwned, acquire, ...) **không** persist — chỉ là derived state.
+```json
+[
+  {
+    "id": "uuid-v4",
+    "email": "user@example.com",
+    "passwordHash": "salt:hash",   // scrypt, KHÔNG lưu plain-text
+    "createdAt": 1234567890
+  }
+]
+```
 
 ---
 
-## 3. Trang Login (`app/(auth)/login/page.tsx`)
+## 6. Auth Guard Pattern
 
-**Route:** `/login` — nằm trong `(auth)` group, **không có Sidebar/Navbar**.
+### Trang protected (`/saved`)
+Dùng `AuthGate` component per-tab — không redirect, hiển thị inline prompt:
 
-### Layout
-```
-┌─────────────────────────────────────────┐
-│  LEFT (hidden on mobile)  │  RIGHT form │
-│  • Logo → href="/"        │             │
-│  • Auto-advance carousel  │             │
-│  • Decorative rings       │             │
-│  • Slide dots (brand màu) │             │
-└─────────────────────────────────────────┘
+```tsx
+// Mỗi tab có copy riêng
+{ Titles:   "Sign in to see your library" }
+{ Wishlist: "Sign in to use Wishlist" }
+{ Lists:    "Sign in to use Lists" }
 ```
 
-### Form fields & Validation
+### Actions (Buy / Wishlist / AddToList)
+Guard ở handler level, **không phải** ở component:
+
+```tsx
+// CategoryContent.tsx
+onAcquire={(e) => {
+  e.stopPropagation()
+  if (!currentUser) { router.push("/signin"); return }
+  acquire(book)
+}}
+
+// BookSidePanel.tsx
+function handleAcquire() {
+  if (!currentUser) { close(); router.push("/signin"); return }
+  acquire(book)
+}
+```
+
+---
+
+## 7. Trang Login (`/login`) — Register
+
+**Route:** `app/(auth)/login/page.tsx` — group `(auth)`, không có Sidebar/Navbar.
+
+### Form validation
 
 | Field | Rules |
 |---|---|
 | Email | Required + regex format |
 | Password | Required + min 8 chars + 1 uppercase + 1 number |
 
-- Validate `onBlur` (không spam lỗi khi đang gõ)
-- Icon `CheckCircle2` xanh / `AlertCircle` đỏ trong input
-- Error message nhỏ bên dưới field
-- **Password Strength bar** — 4 segments, màu: đỏ → vàng → xanh dương → xanh lá
-
-### Submit flow
-```
-handleSubmit()
-  → setEmailTouched + setPasswordTouched (trigger validation UI)
-  → if (!isFormValid) return
-  → register(email, password)
-    → ok: false → setServerError (banner đỏ phía trên button)
-    → ok: true  → setSubmitted = true → success screen → setTimeout(router.push("/"), 1800)
-```
-
-### States
-- **idle** — form bình thường
-- **error** — field border đỏ + message + icon
-- **ok** — field border xanh + checkmark
-- **serverError** — banner đỏ (`bg-red-50 border-red-200`) phía trên CTA
-- **submitted** — success screen với `CheckCircle2` + "Account created!" + auto-redirect
-
-### UX notes
-- CTA button xám + `cursor-not-allowed` khi form chưa valid
-- Logo "Litverse" ở left panel là `<Link href="/">` → về home
-- Mobile: left panel ẩn (`hidden md:flex`), thay bằng logo nhỏ trong form
-- Carousel auto-advance 4s với fade transition (opacity 0→1, 300ms)
-- Đã bỏ `<Sidebar />` — auth pages không có shell
+- Validate `onBlur`
+- **Password Strength bar** — 4 segments: đỏ → vàng → xanh dương → xanh lá
+- CTA xám + `cursor-not-allowed` khi form chưa valid
+- Success: "Account created!" → auto-redirect về `/` sau 1800ms
 
 ---
 
-## 4. Trang Signin (`app/(auth)/signin/page.tsx`)
+## 8. Trang Signin (`/signin`) — Login
 
-**Route:** `/signin` — cùng group `(auth)`, không có shell.
+**Route:** `app/(auth)/signin/page.tsx` — cùng group `(auth)`.
 
-### Khác biệt so với Login
-
-| | Login | Signin |
+| | Login (`/login`) | Signin (`/signin`) |
 |---|---|---|
-| Heading | "Create an account" | "Sign in" |
 | Action | `register()` | `login()` |
-| Password validation | strength rules | chỉ required |
-| Password strength bar | ✅ | ❌ |
+| Password rules | strength rules | chỉ required |
+| Strength bar | ✅ | ❌ |
 | Success message | "Account created!" | "Welcome back!" |
-| Carousel slides | feature highlights | "welcome back" themed |
-
-### Submit flow
-```
-handleSubmit()
-  → setEmailTouched + setPasswordTouched
-  → if (!isFormValid) return
-  → login(email, password)
-    → ok: false → setServerError "Incorrect email or password."
-    → ok: true  → setSuccess = true → setTimeout(router.push("/"), 1800)
-```
-
-- Gõ vào input → `setServerError("")` reset lỗi ngay lập tức
-- CTA button active khi `email && password` có giá trị
 
 ---
 
-## 5. Navbar — User Dropdown
-
-`components/layout/Navbar.tsx`
-
-```
-[Avatar] [displayName]  ▼
-         Story Seeker
-```
-
-Click → dropdown:
-```
-┌─────────────────────┐
-│ displayName         │
-│ user@email.com      │
-├─────────────────────┤
-│ 👤 Profile          │
-│ ⚙️  Settings        │
-├─────────────────────┤
-│ 🔴 Sign out         │
-└─────────────────────┘
-```
+## 9. Navbar — User Dropdown
 
 - **displayName** = `email.split("@")[0]`, CSS `capitalize`
-- **Avatar** = DiceBear adventurer, seed = email → unique per user
-- Click ngoài dropdown → tự đóng (`mousedown` listener)
-- `ChevronDown` xoay 180° khi mở
-- **Sign out**: `logout()` + `router.push("/signin")`
+- **Avatar** = DiceBear adventurer, seed = email
+- Click ngoài → tự đóng (mousedown listener)
+- Sign out: `logout()` + `router.push("/signin")`
 
 ---
 
-## 6. Sidebar — Logout Button
+## 10. localStorage
 
-`components/layout/Sidebar.tsx`
+Không còn dùng cho auth hay library. Chỉ còn 1 key:
 
-- `LogOut` icon tách khỏi `BOTTOM_ITEMS` array (dùng `<button>` thay `<Link>`)
-- Style: `text-red-400 hover:bg-red-50 hover:text-red-500`
-- onClick: `logout()` + `router.push("/signin")`
-- Nhất quán với Sign out trong Navbar dropdown
-
----
-
-## 7. localStorage Keys
-
-| Key | Store | Nội dung |
+| Key | Nơi dùng | Nội dung |
 |---|---|---|
-| `lv_auth` | authStore | `{ users[], currentUser }` |
-| `lv_library` | libraryStore | `{ ownedBooks[], wishlist[], lists[] }` |
-| `bookmark_${id}` | BookTextViewer | page index bookmark |
+| `bookmark_${bookId}` | `BookTextViewer` | boolean — đánh dấu trang |
+
+Keys cũ `lv_auth`, `lv_library` bị xoá chủ động trong `layout.tsx` khi app mount.
