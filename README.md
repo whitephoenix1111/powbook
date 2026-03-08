@@ -106,4 +106,4 @@ npm run lint     # ESLint
 
 - Data được lưu trong file JSON (`data/`) — phù hợp cho demo, không dùng cho production thực tế
 - Audiobook stream trực tiếp từ LibriVox / archive.org
-- Ảnh bìa từ OpenLibrary CDN và Google Books
+- Ảnh bìa từ OpenLibrary CDN và Google Books 
