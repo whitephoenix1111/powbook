@@ -1,36 +1,109 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Powbook — Digital Library Hub
 
-## Getting Started
+Nền tảng quản lý nội dung số (E-book & Audiobook) với giao diện Bento Grid phong cách Retro Editorial. Fresher Portfolio Project.
 
-First, run the development server:
+**Business model:** Freemium — Free / Paid / Owned  
+**Stack:** Next.js 15 · TypeScript · Tailwind CSS · Shadcn/ui · Zustand
+
+---
+
+## Yêu cầu
+
+- Node.js 18+
+- npm
+
+---
+
+## Cài đặt & Chạy local
 
 ```bash
+# 1. Clone repo
+git clone <repo-url>
+cd powbook
+
+# 2. Cài dependencies
+npm install
+
+# 3. Tạo file .env.local (xem phần Environment bên dưới)
+
+# 4. Chạy dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Mở [http://localhost:3000](http://localhost:3000) trên trình duyệt.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment Variables
 
-## Learn More
+Tạo file `.env.local` ở root:
 
-To learn more about Next.js, take a look at the following resources:
+```env
+JWT_SECRET=your-secret-key-change-in-production
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+> Nếu không có `JWT_SECRET`, app vẫn chạy được với fallback secret mặc định — **chỉ dùng cho development**.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Tài khoản thử nghiệm
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Đăng ký tài khoản mới tại `/login`, hoặc dùng tài khoản có sẵn trong `data/users.json` (nếu đã seed).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Sau khi đăng nhập có thể:
+- **Get Free** — nhận sách miễn phí vào library
+- **Buy** — mua sách (mock, không tích hợp payment thật)
+- **Wishlist** — lưu sách muốn đọc
+- **Add to List** — tạo và quản lý reading lists
+- **Rate** — đánh giá sách đã sở hữu (1–5 sao)
+- **Read** — đọc e-book dạng 2 trang
+- **Play** — nghe audiobook với player cố định phía dưới
+
+---
+
+## Cấu trúc chính
+
+```
+app/
+├── (auth)/login        → Đăng ký tài khoản
+├── (auth)/signin       → Đăng nhập
+├── (main)/             → Home — Bento Grid
+├── (main)/category     → Duyệt & tìm kiếm sách
+├── (main)/saved        → Library cá nhân (Titles / Wishlist / Lists)
+├── (main)/book/[id]    → Reader 2 trang
+└── api/                → Auth, Books, Library, Ratings
+
+data/
+├── books.json          → Catalog 10 cuốn (source of truth)
+├── users.json          → Tài khoản đã đăng ký
+├── library.json        → Owned / wishlist / lists theo userId
+└── ratings.json        → Điểm đánh giá theo bookId
+```
+
+---
+
+## Auth
+
+- JWT HS256 tự implement bằng Node.js `crypto` (không dùng thư viện ngoài)
+- Session lưu trong **httpOnly cookie** `lv_session`, thời hạn 7 ngày
+- Password hash bằng **scrypt**
+- Không dùng localStorage cho auth
+
+---
+
+## Scripts
+
+```bash
+npm run dev      # Dev server (http://localhost:3000)
+npm run build    # Production build
+npm run start    # Chạy production build
+npm run lint     # ESLint
+```
+
+---
+
+## Lưu ý
+
+- Data được lưu trong file JSON (`data/`) — phù hợp cho demo, không dùng cho production thực tế
+- Audiobook stream trực tiếp từ LibriVox / archive.org
+- Ảnh bìa từ OpenLibrary CDN và Google Books
