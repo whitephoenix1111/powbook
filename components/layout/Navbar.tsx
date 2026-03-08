@@ -13,10 +13,18 @@ interface NavbarProps {
 
 export default function Navbar({ searchPlaceholder = "Title, author, host, or topic" }: NavbarProps) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const dropRef = useRef<HTMLDivElement>(null);
   const { currentUser, logout } = useAuthStore();
   const router = useRouter();
   const isLoggedIn = !!currentUser;
+
+  function handleSearch(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" && query.trim()) {
+      router.push(`/category?q=${encodeURIComponent(query.trim())}&type=All`);
+      setQuery("");
+    }
+  }
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -45,6 +53,9 @@ export default function Navbar({ searchPlaceholder = "Title, author, host, or to
         <input
           type="text"
           placeholder={searchPlaceholder}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleSearch}
           className="flex-1 bg-transparent text-[13px] font-sans text-ink placeholder:text-ink-secondary focus:outline-none"
         />
       </div>

@@ -13,8 +13,13 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "res.cloudinary.com",
+        hostname: "books.google.com",
       },
+      {
+        protocol: "https",
+        hostname: "api.dicebear.com",
+      },
+
     ],
   },
 };

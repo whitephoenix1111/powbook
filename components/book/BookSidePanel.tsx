@@ -209,6 +209,11 @@ export default function BookSidePanel({ book }: BookSidePanelProps) {
     if (!owned) acquire(book);
   }
 
+  function handleWishlist() {
+    if (!currentUser) { close(); router.push("/signin"); return; }
+    toggleWishlist(book);
+  }
+
   function handleAddToList() {
     if (!currentUser) { close(); router.push("/signin"); return; }
     setShowListModal(true);
@@ -279,7 +284,7 @@ export default function BookSidePanel({ book }: BookSidePanelProps) {
 
         <div className="flex border border-warm-border rounded-lg overflow-hidden mt-1">
           <button
-            onClick={() => toggleWishlist(book)}
+            onClick={handleWishlist}
             disabled={owned}
             title={owned ? "Already owned" : wishlisted ? "Remove from wishlist" : "Add to wishlist"}
             className={`flex-1 flex flex-col items-center gap-1 py-2.5 font-sans transition-colors border-r border-warm-border
@@ -406,7 +411,7 @@ export default function BookSidePanel({ book }: BookSidePanelProps) {
       {/* ── Description ── */}
       {book.description && (
         <div className="p-4">
-          <p className="font-sans text-[12px] text-ink leading-relaxed">{book.description}</p>
+          <p className="font-sans text-ink text-[12px] leading-relaxed">{book.description}</p>
         </div>
       )}
     </aside>

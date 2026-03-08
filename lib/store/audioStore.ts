@@ -8,6 +8,8 @@ interface AudioState {
   currentTime: number;
   duration: number;
   playbackRate: number;
+  // Ref đến <audio> element thật trong DOM — được set bởi AudioPlayer
+  // thông qua callback ref, không phải useRef trực tiếp.
   audioRef: HTMLAudioElement | null;
 
   dismiss: () => void;
@@ -39,14 +41,12 @@ export const useAudioStore = create<AudioState>((set, get) => ({
     set({ currentBook: null, audioUrl: null, isPlaying: false, currentTime: 0, duration: 0 });
   },
 
+  // Reset time về 0 khi đổi sách — AudioPlayer sẽ tự load + play
   setBook: (book, audioUrl) => {
     set({ currentBook: book, audioUrl, currentTime: 0, duration: 0, isPlaying: true });
   },
 
-  setAudioRef: (ref) => {
-    console.log("[AudioStore] setAudioRef →", ref ? "HTMLAudioElement registered" : "null (unmounted)");
-    set({ audioRef: ref });
-  },
+  setAudioRef: (ref) => set({ audioRef: ref }),
 
   play: () => set({ isPlaying: true }),
   pause: () => set({ isPlaying: false }),
@@ -59,32 +59,19 @@ export const useAudioStore = create<AudioState>((set, get) => ({
     set({ currentTime: time });
   },
 
+  // Clamp về [0, duration] để tránh seek vượt biên
   skipForward: (seconds = 10) => {
     const { audioRef } = get();
-    console.log("[AudioStore] skipForward called", {
-      seconds,
-      audioRef: audioRef ? "exists" : "NULL ← bug here",
-      currentTime: audioRef?.currentTime,
-      duration: audioRef?.duration,
-    });
     if (!audioRef) return;
     const newTime = Math.min(audioRef.currentTime + seconds, audioRef.duration || 0);
-    console.log("[AudioStore] skipForward → seeking to", newTime);
     audioRef.currentTime = newTime;
     set({ currentTime: newTime });
   },
 
   skipBackward: (seconds = 10) => {
     const { audioRef } = get();
-    console.log("[AudioStore] skipBackward called", {
-      seconds,
-      audioRef: audioRef ? "exists" : "NULL ← bug here",
-      currentTime: audioRef?.currentTime,
-      duration: audioRef?.duration,
-    });
     if (!audioRef) return;
     const newTime = Math.max(audioRef.currentTime - seconds, 0);
-    console.log("[AudioStore] skipBackward → seeking to", newTime);
     audioRef.currentTime = newTime;
     set({ currentTime: newTime });
   },
@@ -92,6 +79,7 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
 
+  // Set cả element lẫn store để đồng bộ khi element remount
   setPlaybackRate: (rate) => {
     const { audioRef } = get();
     if (audioRef) audioRef.playbackRate = rate;
@@ -99,6 +87,7 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   },
 }));
 
+// Chuyển seconds → "m:ss" hoặc "h:mm:ss" tùy độ dài audio
 export function formatTime(seconds: number): string {
   if (isNaN(seconds)) return "0:00";
   const h = Math.floor(seconds / 3600);

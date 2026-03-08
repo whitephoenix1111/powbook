@@ -12,6 +12,8 @@ export interface Book {
   ratingCount: string
   genres: Genre[]         // multi-value, filter bằng .includes()
 
+  coverHQ?: string        // High-res cover — dùng cho hero card, book reader
+
   // Optional fields — dùng để detect content type
   pages?: BookPage[]      // có → là ebook, hiện nút "Read"
   audioUrl?: string       // có → là audiobook, hiện nút "Play"

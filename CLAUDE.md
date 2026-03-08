@@ -15,8 +15,9 @@ Nền tảng quản lý nội dung số (E-book và Audiobook) với giao diện
 | Data layer | JSON files + Next.js API Routes (App Router) |
 | Auth token | JWT lưu httpOnly cookie — không dùng localStorage |
 | Audio | MP3 từ LibriVox / archive.org |
-| Ảnh bìa | OpenLibrary CDN |
+| Ảnh bìa | OpenLibrary CDN (`cover`) + Google Books `fife=w800` (`coverHQ`) |
 | Icons | Lucide React |
+| Fonts | Fraunces (display/serif) + Plus Jakarta Sans (body) — via next/font/google |
 
 ---
 
@@ -38,7 +39,8 @@ app/
 ├── (auth)/signin/page.tsx
 ├── (main)/layout.tsx
 ├── (main)/page.tsx
-├── (main)/category/page.tsx
+├── (main)/category/page.tsx         → Suspense wrapper
+├── (main)/category/CategoryContent.tsx  → logic thực sự
 ├── (main)/saved/page.tsx
 ├── (main)/book/[id]/page.tsx
 └── api/
@@ -51,19 +53,19 @@ app/
     └── ratings/route.ts           # GET + POST ✓ done
 
 data/
-├── books.json                     # Book catalog — source of truth cho product data
+├── books.json                     # Book catalog — source of truth
 ├── users.json                     # [{ id(UUID), email, passwordHash, createdAt }]
-├── library.json                   # [{ userId(FK→users.id), ownedBookIds[], wishlistIds[], lists[{id,name,bookIds[]}] }]
+├── library.json                   # [{ userId(FK→users.id), ownedBookIds[], wishlistIds[], lists[] }]
 └── ratings.json                   # { [bookId]: { baseRating, baseCount, votes } }
 
 lib/
 ├── auth.ts                        # Server-only: hashPassword, verifyPassword, signJWT, verifyJWT
-├── mockData.ts                    # Book catalog — DEPRECATED, giữ lại cho type exports
+├── mockData.ts                    # TYPE EXPORTS ONLY — Book, BookPage, Genre (data đã xóa)
 └── store/
-    ├── audioStore.ts              # Zustand — player state
-    ├── bookPanelStore.ts          # Zustand — selected book
-    ├── authStore.ts               # Zustand — currentUser { id, email } (client cache)
-    ├── libraryStore.ts            # Zustand — owned/wishlist/lists (client cache, sync từ API)
+    ├── audioStore.ts
+    ├── bookPanelStore.ts
+    ├── authStore.ts
+    ├── libraryStore.ts
     └── toastStore.ts
 ```
 
@@ -75,6 +77,7 @@ lib/
 type Genre = 'history' | 'fiction' | 'science-technology' | 'dark-thriller'
 type Book = {
   id: string; title: string; author: string; cover: string
+  coverHQ?: string     // Google Books fife=w800 — dùng cho hero card + side panel
   rating: number; ratingCount: string; genres: Genre[]
   pages?: BookPage[]   // có → ebook
   audioUrl?: string    // có → audiobook
@@ -84,8 +87,7 @@ type Book = {
 }
 ```
 
-Book type vẫn import từ `lib/mockData.ts` (chỉ dùng type, không dùng data).
-Catalog data thực tế nằm ở `data/books.json`.
+`lib/mockData.ts` chỉ còn type exports — **KHÔNG có data constants**. Mọi data fetch từ `/api/books`.
 
 ---
 
@@ -93,62 +95,43 @@ Catalog data thực tế nằm ở `data/books.json`.
 
 ### `data/users.json`
 ```json
-[
-  {
-    "id": "uuid-v4",
-    "email": "user@example.com",
-    "passwordHash": "salt:hash (scrypt)",
-    "createdAt": 1234567890
-  }
-]
+[{ "id": "uuid-v4", "email": "user@example.com", "passwordHash": "salt:hash", "createdAt": 1234567890 }]
 ```
 
 ### `data/library.json`
 ```json
-[
-  {
-    "userId": "uuid-v4",
-    "ownedBookIds": ["1", "3"],
-    "wishlistIds": ["2"],
-    "lists": [
-      { "id": "list_123", "name": "Favorites", "bookIds": ["1"], "createdAt": 1234567890 }
-    ]
-  }
-]
+[{ "userId": "uuid-v4", "ownedBookIds": ["1"], "wishlistIds": ["2"], "lists": [{ "id": "list_123", "name": "Favorites", "bookIds": ["1"], "createdAt": 0 }] }]
 ```
-> `userId` là FK trỏ vào `users[].id` — KHÔNG lưu email hay full Book object.
 
 ### `data/books.json`
-Array of Book objects — source of truth. `library.json` chỉ lưu IDs, khi GET `/api/library` sẽ resolve IDs → Books từ file này.
+Array of Book objects — 10 cuốn, id 1–10. `coverHQ` dùng Google Books `fife=w800`.
 
 ---
 
 ## 7. Auth & Session ✓ Done
 
 ```
-POST /api/auth/register → hash password (scrypt) → ghi users.json (với UUID) → set cookie
+POST /api/auth/register → hash (scrypt) → ghi users.json → set cookie
 POST /api/auth/login    → verify → set cookie: lv_session (JWT, httpOnly, 7d)
-POST /api/auth/logout   → clear cookie (maxAge=0)
-GET  /api/auth/me       → verify cookie → { user: { id, email } } | { user: null }
+POST /api/auth/logout   → clear cookie
+GET  /api/auth/me       → verify → { user: { id, email } } | { user: null }
 ```
 
-JWT payload: `{ userId, email, iat, exp }` — không lưu password.
-Client: `authStore` giữ `currentUser: { id, email }`, hydrate từ `/api/auth/me` khi layout mount.
-`localStorage["lv_auth"]` đã bị xoá (cleanup trong layout.tsx useEffect).
+JWT payload: `{ userId, email, iat, exp }`.
+Client: `authStore` hydrate từ `/api/auth/me` khi layout mount.
 
 ---
 
 ## 8. Library ✓ Done
 
 ```
-GET  /api/library        → verify cookie → lấy userId → find record trong library.json → resolve IDs → trả Book[]
-POST /api/library        → { action, payload: { bookId?, listId?, name? } }
+GET  /api/library  → verify cookie → resolve IDs → Book[]
+POST /api/library  → { action, payload }
 ```
 
 Actions: `acquire` | `toggleWishlist` | `removeWishlist` | `createList` | `renameList` | `deleteList` | `addToList` | `removeFromList`
 
-`libraryStore` là **client cache** — optimistic update trước, gọi API sau, rollback nếu lỗi.
-`localStorage["lv_library"]` đã bị xoá.
+`libraryStore` = client cache, optimistic update + rollback nếu lỗi.
 
 ---
 
@@ -160,15 +143,16 @@ GET /api/books?id=1      → 1 book
 GET /api/books?ids=1,2,3 → nhiều books
 ```
 
+**Tất cả pages** đều fetch `/api/books` — không còn import data từ `mockData.ts`.
+
 ---
 
 ## 10. Ratings ✓ Done
 
 `data/ratings.json` + `app/api/ratings/route.ts`
-- GET: trả về effective rating (weighted average base + user votes)
-- POST `{ bookId, email, stars }`: upsert vote, tính lại ngay
-- Chỉ user đã owned mới rate được (guard ở client)
-- `StarDisplay` (partial fill SVG) + `StarInput` (interactive, hover label)
+- GET: effective rating (weighted average)
+- POST `{ bookId, email, stars }`: upsert vote
+- Chỉ user đã owned mới rate được
 
 ---
 
@@ -176,12 +160,11 @@ GET /api/books?ids=1,2,3 → nhiều books
 
 ```
 isFree = true  → [Get Free]    → acquire() → ownedBooks
-isFree = false → [Buy · $X.XX] → acquire() → ownedBooks  (mock, no payment)
+isFree = false → [Buy · $X.XX] → acquire() → ownedBooks (mock)
 isOwned = true → [✓ In Library] → [Read] / [Play] unlock
-Wishlist: chỉ khi chưa owned. Owned → tự rời wishlist.
 ```
 
-Badge: Free=emerald | $X.XX=warm-border | Owned=emerald nền.
+**Auth guard trên tất cả actions:** Buy, Wishlist, Add to List — nếu chưa login → close panel + redirect `/signin`.
 
 ---
 
@@ -189,39 +172,38 @@ Badge: Free=emerald | $X.XX=warm-border | Owned=emerald nền.
 
 | Route | Tính năng |
 |---|---|
-| `/` | Bento Grid, tabs All/E-Books/Audiobooks, SidePanel |
-| `/category` | Filter type + genre, badge giá |
-| `/saved` | Tabs: Titles + Wishlist + Lists (active); Following/Notebook/History UI-only |
-| `/book/[id]` | Reader 2 cột, text size CSS var, bookmark localStorage |
+| `/` | Bento Grid, fetch `/api/books`, split ebooks/audiobooks/activeBook |
+| `/category` | Filter type (E-Books/Audiobooks/All) + genre + search (`?q=&type=`) |
+| `/saved` | Tabs: Titles + Wishlist + Lists — **tất cả require login**, AuthGate per tab |
+| `/book/[id]` | Reader 2 cột, fetch `/api/books?id=` |
 
-Filter: E-Books=`b.pages` / Audiobooks=`b.audioUrl` / Genre=`b.genres.includes()` — chain type trước genre sau.
-
----
-
-## 13. Quyết định kỹ thuật
-
-| Khâu | Quyết định |
-|---|---|
-| Book catalog | `data/books.json` — source of truth |
-| `mockData.ts` | Giữ lại CHỈ để export `Book`, `BookPage`, `Genre` types |
-| Auth | scrypt (Node built-in crypto) + JWT httpOnly cookie |
-| Library storage | `userId` FK, chỉ lưu IDs — resolve sang Book khi GET |
-| Ratings | JSON file + API ✓ done |
-| Audio player | Zustand `audioStore` — persist xuyên navigate |
-| Bookmark | `localStorage` key: `bookmark_${id}` |
-| Payment | Mock — `acquire()` thành công ngay |
-| Greeting home | Theo giờ thực + tên từ email nếu đã login |
+### Search flow
+Navbar search (Enter) → `/category?q=...&type=All` → CategoryContent đọc `?q=` param, filter trên toàn catalog.
 
 ---
 
-## 14. Pricing Data
+## 13. AuthGate Pattern
 
-Free: My Year Abroad (id:6), Quidditch Through the Ages (id:7)
+Dùng ở `/saved` cho **Titles, Wishlist, Lists** — mỗi tab có copy riêng:
+- Titles → "Sign in to see your library"
+- Wishlist → "Sign in to use Wishlist"  
+- Lists → "Sign in to use Lists"
+
+Tương tự trong `BookSidePanel`: Buy / Wishlist / AddToList đều guard `!currentUser → redirect /signin`.
+
+---
+
+## 14. Cover Images
+
+- `cover`: OpenLibrary CDN — dùng cho card nhỏ (grid, scroll row)
+- `coverHQ`: Google Books `fife=w800` — dùng cho `HeroBentoCard` (priority + quality=90) và `BookSidePanel`
+- `next.config.ts` whitelist: `covers.openlibrary.org`, `books.google.com`, `api.dicebear.com`
+
+---
+
+## 15. Pricing Data
+
+Free: My Year Abroad (id:6), Quidditch Through the Ages (id:7)  
 Paid: Gatsby ebook $9.99 (id:1) | 100 Years $12.99 (id:2) | Mockingbird $11.99 (id:3) | Of Human Bondage $8.99 (id:4) | Breaking Dawn $10.99 (id:5) | Gatsby audio $14.99 (id:8) | HP audio $19.99 (id:9) | HP E+Audio $24.99 (id:10)
 
 ---
-
-## 15. TODO — Còn lại
-
-- [ ] `mockData.ts` — xoá data constants (POPULAR_BOOKS, RECOMMENDED_AUDIOBOOKS, ACTIVE_BOOK, ALL_BOOKS, getBookById), chỉ giữ type exports. Các component đang dùng data này cần chuyển sang fetch `/api/books`
-- [ ] Route guard — middleware hoặc `useEffect` redirect `/signin` nếu `!currentUser` trên các trang protected

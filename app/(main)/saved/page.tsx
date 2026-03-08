@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Search, BookOpen, Headphones, Download, Heart, ShoppingCart, Check, ListPlus, ChevronRight, Trash2, ArrowLeft, LogIn, Pencil } from "lucide-react";
+import type React from "react";
 import { type Book } from "@/lib/mockData";
 import { useBookPanelStore } from "@/lib/store/bookPanelStore";
 import { useLibraryStore, type BookList } from "@/lib/store/libraryStore";
@@ -75,6 +76,9 @@ export default function SavedPage() {
 
       {/* ── Titles & Wishlist ── */}
       {(activeTab === "Titles" || activeTab === "Wishlist") ? (
+        !isLoggedIn ? (
+          <AuthGate tab={activeTab} />
+        ) : (
         <>
           <div className="relative max-w-sm">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-secondary" />
@@ -114,10 +118,10 @@ export default function SavedPage() {
             <EmptyState tab={activeTab} hasQuery={!!query} />
           )}
         </>
-
+        )
       ) : activeTab === "Lists" ? (
         !isLoggedIn ? (
-          <AuthGate />
+          <AuthGate tab="Lists" />
         ) : openList ? (
           <div className="space-y-4">
             <button
@@ -204,7 +208,7 @@ export default function SavedPage() {
 function ListRow({ list, onOpen, onRename }: { list: BookList; onOpen: () => void; onRename: (name: string) => void }) {
   const [renaming, setRenaming] = useState(false);
   return (
-    <div className="w-full flex items-center gap-4 p-4 rounded-2xl border border-warm-border bg-surface-card hover:border-brand/40 hover:shadow-md transition-all group">
+    <div onClick={onOpen} className="w-full flex items-center gap-4 p-4 rounded-2xl border border-warm-border bg-surface-card hover:border-brand/40 hover:shadow-md transition-all group cursor-pointer">
       <button onClick={onOpen} className="relative w-14 h-14 flex-shrink-0">
         {list.books.slice(0, 3).map((b, i) => (
           <div key={b.id} className="absolute rounded-md overflow-hidden border border-warm-border bg-surface-sunken"
@@ -264,15 +268,34 @@ function InlineRename({ name, onSave, onCancel, autoFocus = false, className = "
 }
 
 /* ── Auth Gate ── */
-function AuthGate() {
+const AUTH_GATE_COPY: Record<string, { title: string; desc: string; icon: React.ReactNode }> = {
+  Titles: {
+    title: "Sign in to see your library",
+    desc: "Your purchased and free books will appear here. Sign in to access your collection.",
+    icon: <BookOpen size={24} strokeWidth={1.6} className="text-brand" />,
+  },
+  Wishlist: {
+    title: "Sign in to use Wishlist",
+    desc: "Save books you want to read later. Sign in to start building your wishlist.",
+    icon: <Heart size={24} strokeWidth={1.6} className="text-brand" />,
+  },
+  Lists: {
+    title: "Sign in to use Lists",
+    desc: "Create and manage your personal reading lists with a free account.",
+    icon: <LogIn size={24} strokeWidth={1.6} className="text-brand" />,
+  },
+};
+
+function AuthGate({ tab = "Lists" }: { tab?: string }) {
+  const copy = AUTH_GATE_COPY[tab] ?? AUTH_GATE_COPY.Lists;
   return (
     <div className="flex flex-col items-center justify-center py-24 gap-4">
       <div className="w-14 h-14 rounded-2xl bg-brand/10 flex items-center justify-center">
-        <LogIn size={24} strokeWidth={1.6} className="text-brand" />
+        {copy.icon}
       </div>
       <div className="text-center">
-        <p className="font-display text-[16px] font-bold text-ink">Sign in to use Lists</p>
-        <p className="font-sans text-[13px] text-ink-secondary mt-1 max-w-xs">Create and manage your personal reading lists with a free account.</p>
+        <p className="font-display text-[16px] font-bold text-ink">{copy.title}</p>
+        <p className="font-sans text-[13px] text-ink-secondary mt-1 max-w-xs">{copy.desc}</p>
       </div>
       <div className="flex gap-3 mt-1">
         <Link href="/signin" className="px-5 py-2.5 rounded-xl bg-brand text-white font-sans text-[13px] font-semibold hover:bg-brand/90 transition-colors no-underline">Sign In</Link>

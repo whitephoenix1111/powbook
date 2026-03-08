@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { BookOpen, Headphones, ChevronRight, Heart, Check, Search, X } from "lucide-react";
 import { type Book, type Genre } from "@/lib/mockData";
 import { useBookPanelStore } from "@/lib/store/bookPanelStore";
 import { useLibraryStore } from "@/lib/store/libraryStore";
+import { useAuthStore } from "@/lib/store/authStore";
 
 /* ── Types ── */
-type ContentTab = "E-Books" | "Audiobooks";
+type ContentTab = "E-Books" | "Audiobooks" | "All";
 type GenreTab = "All" | Genre;
 
 const GENRE_TABS: { key: GenreTab; label: string }[] = [
@@ -25,11 +26,15 @@ const GENRE_TABS: { key: GenreTab; label: string }[] = [
 ──────────────────────────────────────────────── */
 export function CategoryContent() {
     const searchParams = useSearchParams();
-    const initialType = (searchParams.get("type") as ContentTab) ?? "E-Books";
+    const router = useRouter();
+    const rawType = searchParams.get("type");
+    const initialType: ContentTab = (rawType === "E-Books" || rawType === "Audiobooks" || rawType === "All") ? rawType : "E-Books";
+
+    const initialQuery = searchParams.get("q") ?? "";
 
     const [contentTab, setContentTab] = useState<ContentTab>(initialType);
     const [genreTab, setGenreTab] = useState<GenreTab>("All");
-    const [query, setQuery] = useState("");
+    const [query, setQuery] = useState(initialQuery);
     const [allPool, setAllPool] = useState<Book[]>([]);
     const { selectedBook, toggle } = useBookPanelStore();
 
@@ -46,15 +51,18 @@ export function CategoryContent() {
     const [prevSearchParams, setPrevSearchParams] = useState(searchParams);
     if (prevSearchParams !== searchParams) {
         setPrevSearchParams(searchParams);
-        const t = searchParams.get("type") as ContentTab | null;
-        if (t === "E-Books" || t === "Audiobooks") setContentTab(t);
-        setQuery("");
+        const t = searchParams.get("type");
+        if (t === "E-Books" || t === "Audiobooks" || t === "All") setContentTab(t);
+        const q = searchParams.get("q");
+        setQuery(q ?? "");
     }
 
     const { isOwned, isWishlisted, acquire, toggleWishlist } = useLibraryStore();
+    const { currentUser } = useAuthStore();
 
     /* Filter */
     const byType = allPool.filter((b) =>
+        contentTab === "All" ? true :
         contentTab === "E-Books" ? !!b.pages : !!b.audioUrl
     );
     const byGenre =
@@ -203,8 +211,16 @@ export function CategoryContent() {
                                 owned={isOwned(book.id)}
                                 wishlisted={isWishlisted(book.id)}
                                 onSelect={() => toggle(book)}
-                                onAcquire={(e) => { e.stopPropagation(); acquire(book); }}
-                                onWishlist={(e) => { e.stopPropagation(); toggleWishlist(book); }}
+                                onAcquire={(e) => {
+                                    e.stopPropagation();
+                                    if (!currentUser) { router.push("/signin"); return; }
+                                    acquire(book);
+                                }}
+                                onWishlist={(e) => {
+                                    e.stopPropagation();
+                                    if (!currentUser) { router.push("/signin"); return; }
+                                    toggleWishlist(book);
+                                }}
                             />
                         ))}
                     </div>
@@ -233,7 +249,7 @@ function BookCard({
     onWishlist,
 }: {
     book: Book;
-    contentTab: "E-Books" | "Audiobooks";
+    contentTab: ContentTab;
     isActive: boolean;
     owned: boolean;
     wishlisted: boolean;
@@ -263,8 +279,8 @@ function BookCard({
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
 
-                {/* Audio badge — chỉ khi ở E-Books tab */}
-                {book.audioUrl && contentTab === "E-Books" && (
+                {/* Audio badge — chỉ khi ở E-Books tab hoặc All */}
+                {book.audioUrl && contentTab !== "Audiobooks" && (
                     <span className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-ink/70 backdrop-blur-sm text-white font-sans text-[9px] font-bold uppercase tracking-wide">
                         <Headphones size={8} strokeWidth={2.5} /> Audio
                     </span>

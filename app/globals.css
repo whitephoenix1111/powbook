@@ -51,8 +51,8 @@
   --color-destructive:  oklch(0.577 0.245 27.325);
 
   /* --- Font families --- */
-  --font-sans:    var(--font-dm-sans), sans-serif;
-  --font-display: var(--font-playfair), serif;
+  --font-sans:    var(--font-jakarta), sans-serif;
+  --font-display: var(--font-fraunces), serif;
   --font-mono:    ui-monospace, monospace;
 
   /* --- Border radius scale --- */
