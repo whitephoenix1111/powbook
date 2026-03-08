@@ -182,12 +182,3 @@ Click → dropdown:
 | `lv_auth` | authStore | `{ users[], currentUser }` |
 | `lv_library` | libraryStore | `{ ownedBooks[], wishlist[], lists[] }` |
 | `bookmark_${id}` | BookTextViewer | page index bookmark |
-
----
-
-## 8. Việc chưa làm (Auth)
-
-- **Route guard** — middleware hoặc `useEffect` redirect `/signin` nếu `!currentUser` trên các trang protected
-- **Profile page** — hiển thị thông tin user, đổi avatar seed
-- **Đổi password** — form trong Settings
-- **"Forgot password"** — hiện là button dummy, chưa có flow
