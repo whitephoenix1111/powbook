@@ -200,10 +200,3 @@ Tương tự trong `BookSidePanel`: Buy / Wishlist / AddToList đều guard `!cu
 - `next.config.ts` whitelist: `covers.openlibrary.org`, `books.google.com`, `api.dicebear.com`
 
 ---
-
-## 15. Pricing Data
-
-Free: My Year Abroad (id:6), Quidditch Through the Ages (id:7)  
-Paid: Gatsby ebook $9.99 (id:1) | 100 Years $12.99 (id:2) | Mockingbird $11.99 (id:3) | Of Human Bondage $8.99 (id:4) | Breaking Dawn $10.99 (id:5) | Gatsby audio $14.99 (id:8) | HP audio $19.99 (id:9) | HP E+Audio $24.99 (id:10)
-
----
