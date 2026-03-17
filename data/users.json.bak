@@ -1,0 +1,2 @@
+// Backup reference only — data đã migrate sang Neon PostgreSQL (bảng `books`)
+// Không dùng trong runtime. Xem lib/schema.ts và scripts/seed.ts.

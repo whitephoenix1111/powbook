@@ -1,35 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { db } from "@/lib/db";
+import { ratings, userVotes } from "@/lib/schema";
+import { eq } from "drizzle-orm";
 
-const DATA_PATH = path.join(process.cwd(), "data", "ratings.json");
-
-/* ── Types ── */
-export interface RatingEntry {
-  baseRating: number;
-  baseCount:  number;
-  votes:      Record<string, number>; // email → 1..5
-}
-
-type RatingsFile = Record<string, RatingEntry>;
-
-/* ── Helpers ── */
-function readFile(): RatingsFile {
-  const raw = fs.readFileSync(DATA_PATH, "utf-8");
-  return JSON.parse(raw);
-}
-
-function writeFile(data: RatingsFile) {
-  fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2), "utf-8");
-}
-
-export function computeEffective(entry: RatingEntry): { rating: number; count: number } {
-  const allVotes   = Object.values(entry.votes);
-  const extraSum   = allVotes.reduce((a, b) => a + b, 0);
-  const totalCount = entry.baseCount + allVotes.length;
-  const totalSum   = entry.baseRating * entry.baseCount + extraSum;
+/* ── computeEffective (giữ nguyên logic) ── */
+function computeEffective(
+  baseRating: number,
+  baseCount: number,
+  votes: { stars: number }[]
+): { rating: number; count: number } {
+  const extraSum   = votes.reduce((a, v) => a + v.stars, 0);
+  const totalCount = baseCount + votes.length;
+  const totalSum   = baseRating * baseCount + extraSum;
   return {
-    rating: totalCount > 0 ? Math.round((totalSum / totalCount) * 10) / 10 : entry.baseRating,
+    rating: totalCount > 0 ? Math.round((totalSum / totalCount) * 10) / 10 : baseRating,
     count:  totalCount,
   };
 }
@@ -39,28 +23,46 @@ function formatCount(n: number): string {
   return String(n);
 }
 
-/* ── GET /api/ratings
-   Response: { [bookId]: { rating: number, countStr: string, votes: Record<email,number> } }
+/* ── GET /api/ratings ───────────────────────────────────────
+   Response: { [bookId]: { rating, countStr, votes: Record<email,stars> } }
 ── */
 export async function GET() {
   try {
-    const data = readFile();
+    const allRatings = await db.select().from(ratings);
+    const allVotes   = await db.select().from(userVotes);
+
+    // Group votes by bookId
+    const votesByBook: Record<string, { email: string; stars: number }[]> = {};
+    for (const v of allVotes) {
+      if (!votesByBook[v.bookId]) votesByBook[v.bookId] = [];
+      votesByBook[v.bookId].push({ email: v.email, stars: v.stars });
+    }
+
     const result: Record<string, { rating: number; countStr: string; votes: Record<string, number> }> = {};
 
-    for (const [id, entry] of Object.entries(data)) {
-      const { rating, count } = computeEffective(entry);
-      result[id] = { rating, countStr: formatCount(count), votes: entry.votes };
+    for (const r of allRatings) {
+      const bookVotes = votesByBook[r.bookId] ?? [];
+      const { rating, count } = computeEffective(
+        Number(r.baseRating),
+        r.baseCount ?? 0,
+        bookVotes,
+      );
+      // Reconstruct votes map (email → stars) — giữ shape như cũ
+      const votesMap: Record<string, number> = {};
+      for (const v of bookVotes) votesMap[v.email] = v.stars;
+
+      result[r.bookId] = { rating, countStr: formatCount(count), votes: votesMap };
     }
 
     return NextResponse.json(result);
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Failed to read ratings" }, { status: 500 });
   }
 }
 
-/* ── POST /api/ratings
-   Body: { bookId: string, email: string, stars: number (1-5) }
-   Response: { rating: number, countStr: string, userVote: number }
+/* ── POST /api/ratings ──────────────────────────────────────
+   Body: { bookId, email, stars }
+   Response: { rating, countStr, userVote }
 ── */
 export async function POST(req: NextRequest) {
   try {
@@ -70,24 +72,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
-    const data = readFile();
-
-    // Nếu bookId chưa có trong file (sách mới được thêm vào mockData sau)
-    if (!data[bookId]) {
+    // Check book exists in ratings
+    const existing = await db.select().from(ratings).where(eq(ratings.bookId, bookId));
+    if (!existing.length) {
       return NextResponse.json({ error: "Book not found" }, { status: 404 });
     }
 
-    // Upsert vote — user có thể đổi vote
-    data[bookId].votes[email] = stars;
-    writeFile(data);
+    // Upsert vote
+    await db
+      .insert(userVotes)
+      .values({ bookId, email, stars })
+      .onConflictDoUpdate({
+        target: [userVotes.bookId, userVotes.email],
+        set: { stars },
+      });
 
-    const { rating, count } = computeEffective(data[bookId]);
-    return NextResponse.json({
-      rating,
-      countStr: formatCount(count),
-      userVote: stars,
-    });
-  } catch (e) {
+    // Recompute effective rating
+    const r = existing[0];
+    const votes = await db.select().from(userVotes).where(eq(userVotes.bookId, bookId));
+    const { rating, count } = computeEffective(Number(r.baseRating), r.baseCount ?? 0, votes);
+
+    return NextResponse.json({ rating, countStr: formatCount(count), userVote: stars });
+  } catch {
     return NextResponse.json({ error: "Failed to write rating" }, { status: 500 });
   }
 }

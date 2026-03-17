@@ -1,74 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { db } from "@/lib/db";
+import { books, ownedBooks, wishlist, lists, listBooks } from "@/lib/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { verifyJWT, COOKIE_NAME } from "@/lib/auth";
 import type { Book } from "@/lib/mockData";
-
-// ── Types ────────────────────────────────────────────────────
-
-// Cấu trúc lưu trong library.json — array of records, mỗi record = 1 user
-interface LibraryRecord {
-  userId:       string;   // foreign key → users.json[].id
-  ownedBookIds: string[];
-  wishlistIds:  string[];
-  lists: {
-    id:        string;
-    name:      string;
-    bookIds:   string[];
-    createdAt: number;
-  }[];
-}
-
-// Cấu trúc trả về cho client — resolved thành Book objects
-export interface ResolvedLibrary {
-  ownedBooks: Book[];
-  wishlist:   Book[];
-  lists: {
-    id:        string;
-    name:      string;
-    books:     Book[];
-    createdAt: number;
-  }[];
-}
-
-// ── File helpers ─────────────────────────────────────────────
-const LIBRARY_FILE = path.join(process.cwd(), "data", "library.json");
-const BOOKS_FILE   = path.join(process.cwd(), "data", "books.json");
-
-function readLibraryDB(): LibraryRecord[] {
-  try { return JSON.parse(fs.readFileSync(LIBRARY_FILE, "utf8")); } catch { return []; }
-}
-function writeLibraryDB(records: LibraryRecord[]): void {
-  fs.writeFileSync(LIBRARY_FILE, JSON.stringify(records, null, 2));
-}
-function readBooksDB(): Book[] {
-  try { return JSON.parse(fs.readFileSync(BOOKS_FILE, "utf8")); } catch { return []; }
-}
-
-const EMPTY_RECORD = (userId: string): LibraryRecord => ({
-  userId,
-  ownedBookIds: [],
-  wishlistIds:  [],
-  lists:        [],
-});
-
-// ── Resolve IDs → Books ───────────────────────────────────────
-function resolveBooks(ids: string[], catalog: Book[]): Book[] {
-  return ids.map((id) => catalog.find((b) => b.id === id)).filter(Boolean) as Book[];
-}
-
-function resolveLibrary(record: LibraryRecord, catalog: Book[]): ResolvedLibrary {
-  return {
-    ownedBooks: resolveBooks(record.ownedBookIds, catalog),
-    wishlist:   resolveBooks(record.wishlistIds,  catalog),
-    lists: record.lists.map((l) => ({
-      id:        l.id,
-      name:      l.name,
-      createdAt: l.createdAt,
-      books:     resolveBooks(l.bookIds, catalog),
-    })),
-  };
-}
+import type { ResolvedLibrary } from "@/lib/libraryTypes";
 
 // ── Auth guard ────────────────────────────────────────────────
 function getUserId(req: NextRequest): string | null {
@@ -77,21 +13,81 @@ function getUserId(req: NextRequest): string | null {
   return verifyJWT(token)?.userId ?? null;
 }
 
+// ── Map DB row → Book ─────────────────────────────────────────
+function toBook(row: typeof books.$inferSelect): Book {
+  return {
+    id:          row.id,
+    title:       row.title,
+    author:      row.author,
+    narrator:    row.narrator ?? undefined,
+    cover:       row.cover ?? "",
+    coverHQ:     row.coverHQ ?? undefined,
+    rating:      row.rating ? Number(row.rating) : 0,
+    ratingCount: row.ratingCount ?? "0",
+    genres:      (row.genres ?? []) as Book["genres"],
+    audioUrl:    row.audioUrl ?? undefined,
+    isFree:      row.isFree ?? false,
+    price:       row.price ? Number(row.price) : undefined,
+    length:      row.length ?? undefined,
+    format:      row.format ?? undefined,
+    publisher:   row.publisher ?? undefined,
+    released:    row.released ?? undefined,
+    description: row.description ?? undefined,
+    pages:       row.pages ?? undefined,
+  };
+}
+
+// ── Fetch full resolved library cho 1 user ────────────────────
+async function getResolvedLibrary(userId: string): Promise<ResolvedLibrary> {
+  // 1. owned books
+  const ownedRows = await db
+    .select({ book: books })
+    .from(ownedBooks)
+    .innerJoin(books, eq(books.id, ownedBooks.bookId))
+    .where(eq(ownedBooks.userId, userId));
+
+  // 2. wishlist
+  const wishlistRows = await db
+    .select({ book: books })
+    .from(wishlist)
+    .innerJoin(books, eq(books.id, wishlist.bookId))
+    .where(eq(wishlist.userId, userId));
+
+  // 3. lists
+  const userLists = await db.select().from(lists).where(eq(lists.userId, userId));
+
+  const resolvedLists = await Promise.all(
+    userLists.map(async (l) => {
+      const bookRows = await db
+        .select({ book: books })
+        .from(listBooks)
+        .innerJoin(books, eq(books.id, listBooks.bookId))
+        .where(eq(listBooks.listId, l.id));
+      return {
+        id:        l.id,
+        name:      l.name,
+        createdAt: l.createdAt ? new Date(l.createdAt).getTime() : Date.now(),
+        books:     bookRows.map((r) => toBook(r.book)),
+      };
+    })
+  );
+
+  return {
+    ownedBooks: ownedRows.map((r) => toBook(r.book)),
+    wishlist:   wishlistRows.map((r) => toBook(r.book)),
+    lists:      resolvedLists,
+  };
+}
+
 // ── GET /api/library ──────────────────────────────────────────
 export async function GET(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const records = readLibraryDB();
-  const catalog = readBooksDB();
-  const record  = records.find((r) => r.userId === userId) ?? EMPTY_RECORD(userId);
-
-  return NextResponse.json(resolveLibrary(record, catalog));
+  return NextResponse.json(await getResolvedLibrary(userId));
 }
 
 // ── POST /api/library ─────────────────────────────────────────
-// Body: { action: string, payload: { bookId?: string, ... } }
-// Tất cả mutations nhận bookId (string) thay vì full Book object
 export async function POST(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -99,37 +95,35 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const { action, payload } = body as { action: string; payload: Record<string, unknown> };
 
-  const records = readLibraryDB();
-  const catalog = readBooksDB();
-  const existingIndex = records.findIndex((r) => r.userId === userId);
-  const record: LibraryRecord =
-    existingIndex !== -1 ? records[existingIndex] : EMPTY_RECORD(userId);
-
   switch (action) {
 
     case "acquire": {
       const { bookId } = payload as { bookId: string };
-      if (!record.ownedBookIds.includes(bookId)) {
-        record.ownedBookIds = [...record.ownedBookIds, bookId];
-        record.wishlistIds  = record.wishlistIds.filter((id) => id !== bookId);
-      }
+      await db.insert(ownedBooks).values({ userId, bookId }).onConflictDoNothing();
+      await db.delete(wishlist).where(and(eq(wishlist.userId, userId), eq(wishlist.bookId, bookId)));
       break;
     }
 
     case "toggleWishlist": {
       const { bookId } = payload as { bookId: string };
-      if (record.ownedBookIds.includes(bookId)) break; // đã owned → bỏ qua
-      if (record.wishlistIds.includes(bookId)) {
-        record.wishlistIds = record.wishlistIds.filter((id) => id !== bookId);
+      // Đã owned → bỏ qua
+      const owned = await db.select().from(ownedBooks)
+        .where(and(eq(ownedBooks.userId, userId), eq(ownedBooks.bookId, bookId)));
+      if (owned.length) break;
+
+      const inWishlist = await db.select().from(wishlist)
+        .where(and(eq(wishlist.userId, userId), eq(wishlist.bookId, bookId)));
+      if (inWishlist.length) {
+        await db.delete(wishlist).where(and(eq(wishlist.userId, userId), eq(wishlist.bookId, bookId)));
       } else {
-        record.wishlistIds = [...record.wishlistIds, bookId];
+        await db.insert(wishlist).values({ userId, bookId }).onConflictDoNothing();
       }
       break;
     }
 
     case "removeWishlist": {
       const { bookId } = payload as { bookId: string };
-      record.wishlistIds = record.wishlistIds.filter((id) => id !== bookId);
+      await db.delete(wishlist).where(and(eq(wishlist.userId, userId), eq(wishlist.bookId, bookId)));
       break;
     }
 
@@ -137,7 +131,7 @@ export async function POST(req: NextRequest) {
       const { listId, name } = payload as { listId: string; name: string };
       const trimmed = name.trim();
       if (trimmed) {
-        record.lists = [...record.lists, { id: listId, name: trimmed, bookIds: [], createdAt: Date.now() }];
+        await db.insert(lists).values({ id: listId, userId, name: trimmed }).onConflictDoNothing();
       }
       break;
     }
@@ -146,32 +140,28 @@ export async function POST(req: NextRequest) {
       const { listId, newName } = payload as { listId: string; newName: string };
       const trimmed = newName.trim();
       if (trimmed) {
-        record.lists = record.lists.map((l) => l.id === listId ? { ...l, name: trimmed } : l);
+        await db.update(lists).set({ name: trimmed })
+          .where(and(eq(lists.id, listId), eq(lists.userId, userId)));
       }
       break;
     }
 
     case "deleteList": {
       const { listId } = payload as { listId: string };
-      record.lists = record.lists.filter((l) => l.id !== listId);
+      // listBooks cascade delete tự động vì FK onDelete: cascade
+      await db.delete(lists).where(and(eq(lists.id, listId), eq(lists.userId, userId)));
       break;
     }
 
     case "addToList": {
       const { listId, bookId } = payload as { listId: string; bookId: string };
-      record.lists = record.lists.map((l) =>
-        l.id === listId && !l.bookIds.includes(bookId)
-          ? { ...l, bookIds: [...l.bookIds, bookId] }
-          : l
-      );
+      await db.insert(listBooks).values({ listId, bookId }).onConflictDoNothing();
       break;
     }
 
     case "removeFromList": {
       const { listId, bookId } = payload as { listId: string; bookId: string };
-      record.lists = record.lists.map((l) =>
-        l.id === listId ? { ...l, bookIds: l.bookIds.filter((id) => id !== bookId) } : l
-      );
+      await db.delete(listBooks).where(and(eq(listBooks.listId, listId), eq(listBooks.bookId, bookId)));
       break;
     }
 
@@ -179,14 +169,5 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
   }
 
-  // Upsert — cập nhật nếu đã có, thêm mới nếu chưa có
-  if (existingIndex !== -1) {
-    records[existingIndex] = record;
-  } else {
-    records.push(record);
-  }
-  writeLibraryDB(records);
-
-  // Trả về resolved library (backward compat với libraryStore)
-  return NextResponse.json(resolveLibrary(record, catalog));
+  return NextResponse.json(await getResolvedLibrary(userId));
 }

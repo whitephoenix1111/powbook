@@ -44,13 +44,15 @@ Powbook là một Single-Page Web Application xây dựng trên **Next.js 15 (Ap
 │   /api/books           /api/library                             │
 │   /api/ratings                                                  │
 └─────────────────────────────────────────────────────────────────┘
-                         │  fs (Node.js)
+                         │  Drizzle ORM
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                       Data Layer (JSON files)                   │
+│                  Data Layer — Neon PostgreSQL                   │
 │                                                                 │
-│   data/books.json      data/users.json                          │
-│   data/library.json    data/ratings.json                        │
+│   users          books                                          │
+│   owned_books    wishlist                                       │
+│   lists          list_books                                     │
+│   ratings        user_votes                                     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -66,7 +68,7 @@ Powbook là một Single-Page Web Application xây dựng trên **Next.js 15 (Ap
 | UI Components | Shadcn/ui | Button, Sheet, Scroll Area… |
 | Client State | Zustand (5 stores) | Không persist, không dùng localStorage |
 | Auth token | JWT — httpOnly cookie | `lv_session`, 7 ngày, scrypt hash |
-| Data storage | JSON files (Node fs) | books / users / library / ratings |
+| Data storage | Neon PostgreSQL + Drizzle ORM | Serverless, Vercel-compatible |
 | Audio | HTML `<audio>` element | MP3 từ LibriVox / archive.org |
 | Fonts | Fraunces (display) + Plus Jakarta Sans (body) | via `next/font/google` |
 | Icons | Lucide React | |
@@ -125,7 +127,7 @@ app/layout.tsx  (Server)
 ```
 Page mount
   → fetch("/api/books")
-  → API: readBooks() từ data/books.json
+  → API: db.select().from(books)
   → trả về Book[]
   → Client lọc:
       ebooks     = books.filter(b => b.pages && !b.audioUrl)
@@ -139,7 +141,7 @@ Page mount
 Auth hydrate
   → authStore.hydrate() → GET /api/auth/me → set currentUser
   → libraryStore.setUser(userId) → GET /api/library
-      → API: verifyJWT(cookie) → readLibraryDB() → resolveBooks(ids → Book[])
+      → API: verifyJWT(cookie) → JOIN owned_books/wishlist/lists → books
       → trả về { ownedBooks, wishlist, lists }
       → set libraryStore state
 
@@ -147,7 +149,7 @@ User action (ví dụ: acquire)
   → libraryStore.acquire(book)
   → Optimistic: set ownedBooks = [..., book]
   → POST /api/library { action: "acquire", payload: { bookId } }
-      → API: verifyJWT → upsert library.json
+      → API: verifyJWT → INSERT owned_books, DELETE wishlist
       → trả về resolved library
   → Nếu lỗi: rollback state về trước
 ```
@@ -161,7 +163,7 @@ BookSidePanel mount
 
 User vote (chỉ khi isOwned)
   → POST /api/ratings { bookId, email, stars }
-  → API: upsert votes[email] = stars trong ratings.json
+  → API: INSERT/UPDATE user_votes ON CONFLICT DO UPDATE
   → computeEffective() → trả về { rating, countStr, userVote }
   → cập nhật ratingData state trong panel
 ```
@@ -191,13 +193,13 @@ User vote (chỉ khi isOwned)
 ──────────────────────────────────────────────
 POST /api/auth/register
   body: { email, password }
-  → scrypt hash → ghi users.json (UUID id)
+  → scrypt hash → INSERT users (UUID id)
   → set cookie lv_session (JWT, httpOnly, 7d)
   → trả về { id, email }
 
 POST /api/auth/login
   body: { email, password }
-  → verifyPassword (scrypt) → so sánh hash
+  → SELECT users WHERE email → verifyPassword (scrypt)
   → set cookie lv_session
   → trả về { ok, id, email }
 
@@ -219,8 +221,8 @@ GET /api/auth/me
 
 ### Freemium Model
 ```
-Book.isFree = true   → "Get Free"  button → acquire() → ownedBooks
-Book.isFree = false  → "Buy · $X"  button → acquire() → ownedBooks (mock payment)
+Book.isFree = true   → "Get Free"  button → acquire() → owned_books
+Book.isFree = false  → "Buy · $X"  button → acquire() → owned_books (mock payment)
 Book.isOwned = true  → "✓ In Library" + [Read] (ebook) / [Play] (audio) unlocked
 ```
 
@@ -248,7 +250,7 @@ if (!currentUser) {
 
 | Quyết định | Lý do |
 |---|---|
-| JSON files thay vì database | Portfolio project — không cần infra, đơn giản hóa setup |
+| Neon PostgreSQL + Drizzle ORM | Vercel không hỗ trợ ghi file (read-only fs); Neon serverless free tier + Vercel integration 1-click; Drizzle type-safe, bundle nhỏ |
 | Zustand không persist | State là cache của server data; httpOnly cookie giữ session — tránh stale state |
 | AudioPlayer render 1 lần trong layout | Tránh audio bị dừng/re-mount khi navigate giữa pages |
 | BookSidePanel ẩn bằng CSS width transition | Tránh unmount + remount — giữ scroll position, smooth UX |

@@ -14,7 +14,7 @@ interface Book {
   narrator?:   string       // chỉ audiobook
   cover:       string       // OpenLibrary CDN URL — dùng cho card nhỏ
   coverHQ?:    string       // Google Books fife=w800 — hero card + side panel
-  rating:      number       // base rating (float, VD: 4.5)
+  rating:      number       // effective rating (float, VD: 4.5)
   ratingCount: string       // display string ("1.2k", "843")
   genres:      Genre[]      // multi-value — filter dùng .includes()
 
@@ -31,14 +31,14 @@ interface Book {
   length?:     string       // "8h 30m" hoặc "320 pages"
   format?:     string       // "Audiobook" | "E-Book"
   publisher?:  string
-  released?:   string       // năm: "2023"
+  released?:   string
   description?: string
 }
 
 interface BookPage {
   pageNumber: number
-  chapter?:   string   // tên chapter/phần (hiển thị đầu trang trái)
-  content:    string   // body text
+  chapter?:   string
+  content:    string
 }
 ```
 
@@ -52,128 +52,117 @@ interface BookPage {
 
 ---
 
-## `data/books.json`
+## Database — Neon PostgreSQL + Drizzle ORM
 
-Array of Book objects. 10 cuốn, id string "1" → "10". Source of truth cho catalog.
+Schema defined in `lib/schema.ts`. Migrate/push với `drizzle-kit`.
 
-```json
-[
-  {
-    "id": "1",
-    "title": "Example Title",
-    "author": "Author Name",
-    "cover": "https://covers.openlibrary.org/b/id/XXXXXXX-L.jpg",
-    "coverHQ": "https://books.google.com/books/content?id=XXXXX&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api&fife=w800",
-    "rating": 4.5,
-    "ratingCount": "1.2k",
-    "genres": ["fiction"],
-    "pages": [
-      { "pageNumber": 1, "chapter": "Chapter I", "content": "..." },
-      { "pageNumber": 2, "content": "..." }
-    ],
-    "isFree": true,
-    "length": "320 pages",
-    "format": "E-Book",
-    "publisher": "Publisher Name",
-    "released": "2023",
-    "description": "..."
-  }
-]
+### `users`
+```sql
+id            uuid        PRIMARY KEY DEFAULT gen_random_uuid()
+email         text        UNIQUE NOT NULL
+password_hash text        NOT NULL
+created_at    timestamp   DEFAULT now()
 ```
 
-**Note:** Book id="10" được dùng làm hero card cứng trong dashboard (`page.tsx`).
-
----
-
-## `data/users.json`
-
-```json
-[
-  {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "email": "user@example.com",
-    "passwordHash": "a3f8b2c1d4e5f6a7:8b9c0d1e2f3a4b5c...",
-    "createdAt": 1700000000000
-  }
-]
+### `books`
+```sql
+id            text        PRIMARY KEY   -- "1"–"10"
+title         text        NOT NULL
+author        text        NOT NULL
+narrator      text
+cover         text
+cover_hq      text
+rating        numeric(3,1)
+rating_count  text
+genres        text[]
+audio_url     text
+is_free       boolean     DEFAULT false
+price         numeric(10,2)
+length        text
+format        text
+publisher     text
+released      text
+description   text
+pages         jsonb       -- BookPage[]
 ```
 
-- `id`: UUID v4 (random, `crypto.randomUUID()`)
-- `passwordHash`: `"salt_hex:scrypt_hash_hex"` (scrypt 64 bytes, salt 16 bytes)
-- `createdAt`: Unix timestamp milliseconds
-
----
-
-## `data/library.json`
-
-```json
-[
-  {
-    "userId": "550e8400-e29b-41d4-a716-446655440000",
-    "ownedBookIds": ["1", "3"],
-    "wishlistIds": ["5", "7"],
-    "lists": [
-      {
-        "id": "list_1700000000000",
-        "name": "Favorites",
-        "bookIds": ["1"],
-        "createdAt": 1700000000000
-      }
-    ]
-  }
-]
+### `owned_books`
+```sql
+user_id   uuid   FK → users.id   ON DELETE CASCADE
+book_id   text   FK → books.id   ON DELETE CASCADE
+PRIMARY KEY (user_id, book_id)
 ```
 
-- Một record per user (upsert pattern)
-- Lưu IDs, không lưu Book objects → join với `books.json` khi GET
-- `lists[].id`: `"list_${Date.now()}"` — generated client-side trong `libraryStore.createList()`
-
-**Resolve flow (server-side GET):**
+### `wishlist`
+```sql
+user_id   uuid   FK → users.id   ON DELETE CASCADE
+book_id   text   FK → books.id   ON DELETE CASCADE
+PRIMARY KEY (user_id, book_id)
 ```
-readLibraryDB() → find record by userId
-readBooksDB()   → full catalog
-resolveBooks(ids, catalog) → filter + map ids → Book[]
-→ { ownedBooks: Book[], wishlist: Book[], lists: [{...books: Book[]}] }
+
+### `lists`
+```sql
+id          text        PRIMARY KEY   -- "list_${timestamp}"
+user_id     uuid        FK → users.id   ON DELETE CASCADE
+name        text        NOT NULL
+created_at  timestamp   DEFAULT now()
+```
+
+### `list_books`
+```sql
+list_id   text   FK → lists.id   ON DELETE CASCADE
+book_id   text   FK → books.id   ON DELETE CASCADE
+PRIMARY KEY (list_id, book_id)
+```
+
+### `ratings`
+```sql
+book_id      text          PRIMARY KEY   FK → books.id   ON DELETE CASCADE
+base_rating  numeric(3,1)
+base_count   integer
+```
+
+### `user_votes`
+```sql
+book_id   text      FK → ratings.book_id   ON DELETE CASCADE
+email     text      NOT NULL
+stars     smallint  CHECK (stars BETWEEN 1 AND 5)
+PRIMARY KEY (book_id, email)
 ```
 
 ---
 
-## `data/ratings.json`
+## Resolved Library Response Shape
 
-```json
-{
-  "1": {
-    "baseRating": 4.5,
-    "baseCount": 1200,
-    "votes": {
-      "alice@example.com": 5,
-      "bob@example.com": 4
-    }
-  },
-  "2": {
-    "baseRating": 4.2,
-    "baseCount": 843,
-    "votes": {}
-  }
+`GET /api/library` trả về (shape giữ nguyên so với trước):
+
+```typescript
+// lib/libraryTypes.ts
+interface ResolvedLibrary {
+  ownedBooks: Book[]
+  wishlist:   Book[]
+  lists: {
+    id:        string
+    name:      string
+    books:     Book[]
+    createdAt: number
+  }[]
 }
 ```
 
-- Key: bookId string
-- `baseRating` + `baseCount`: seed data (mock initial ratings)
-- `votes`: user votes, key = email, value = 1–5. Upsert — user có thể vote lại.
-- Effective rating: weighted average của base + votes
+---
 
-**Effective rating formula:**
+## Effective Rating Formula
+
 ```typescript
-function computeEffective(entry: RatingEntry) {
-  const allVotes   = Object.values(entry.votes);
-  const extraSum   = allVotes.reduce((a, b) => a + b, 0);
-  const totalCount = entry.baseCount + allVotes.length;
-  const totalSum   = entry.baseRating * entry.baseCount + extraSum;
+function computeEffective(baseRating, baseCount, votes) {
+  const extraSum   = votes.reduce((a, v) => a + v.stars, 0);
+  const totalCount = baseCount + votes.length;
+  const totalSum   = baseRating * baseCount + extraSum;
   return {
     rating: totalCount > 0
       ? Math.round((totalSum / totalCount) * 10) / 10
-      : entry.baseRating,
+      : baseRating,
     count: totalCount,
   };
 }
@@ -197,7 +186,7 @@ function formatCount(n: number): string {
 | `coverHQ` | `https://books.google.com/books/content?...&fife=w800` | HeroBentoCard, BookSidePanel |
 | Avatar | `https://api.dicebear.com/7.x/adventurer/svg?seed={email}` | Navbar user dropdown |
 
-`next.config.ts` whitelist: `covers.openlibrary.org`, `books.google.com`, `api.dicebear.com`, `i.pravatar.cc`
+`next.config.ts` whitelist: `covers.openlibrary.org`, `books.google.com`, `api.dicebear.com`
 
 ---
 

@@ -1,6 +1,6 @@
 # LLD 05 — API Contract
 
-Tất cả routes nằm trong `app/api/`. Dữ liệu đọc/ghi trực tiếp từ JSON files qua Node.js `fs`.
+Tất cả routes nằm trong `app/api/`. Data layer dùng **Neon PostgreSQL + Drizzle ORM** (không còn `fs` / JSON files).
 
 ---
 
@@ -12,10 +12,10 @@ Body:    { email: string, password: string }
 
 200 OK:  { id: string, email: string }
 400:     { error: "Email and password are required." }
-400:     { error: "Email already registered." }
+409:     { error: "An account with this email already exists." }
 
 Side effects:
-  - scrypt hash password → ghi users.json (UUID id)
+  - scrypt hash password → INSERT users (UUID id auto-gen)
   - set cookie: lv_session = JWT(userId, email), httpOnly, sameSite=lax, 7d
 ```
 
@@ -92,14 +92,14 @@ Body: { action: string, payload: Record<string, unknown> }
 
 | action | payload | Hành vi |
 |---|---|---|
-| `acquire` | `{ bookId }` | Add to ownedBookIds; remove khỏi wishlistIds |
-| `toggleWishlist` | `{ bookId }` | Toggle wishlistIds; no-op nếu đã owned |
-| `removeWishlist` | `{ bookId }` | Remove khỏi wishlistIds |
-| `createList` | `{ listId, name }` | Add list mới (listId do client tạo) |
-| `renameList` | `{ listId, newName }` | Update name; no-op nếu trim empty |
-| `deleteList` | `{ listId }` | Remove list khỏi lists[] |
-| `addToList` | `{ listId, bookId }` | Add bookId vào list.bookIds; skip nếu đã có |
-| `removeFromList` | `{ listId, bookId }` | Remove bookId khỏi list.bookIds |
+| `acquire` | `{ bookId }` | INSERT owned_books; DELETE wishlist |
+| `toggleWishlist` | `{ bookId }` | INSERT/DELETE wishlist; no-op nếu đã owned |
+| `removeWishlist` | `{ bookId }` | DELETE wishlist |
+| `createList` | `{ listId, name }` | INSERT lists (listId do client tạo) |
+| `renameList` | `{ listId, newName }` | UPDATE lists SET name; no-op nếu trim empty |
+| `deleteList` | `{ listId }` | DELETE lists (cascade → list_books) |
+| `addToList` | `{ listId, bookId }` | INSERT list_books; skip nếu đã có |
+| `removeFromList` | `{ listId, bookId }` | DELETE list_books |
 
 ---
 
